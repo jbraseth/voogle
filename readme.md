@@ -1,5 +1,19 @@
 # Voilib: Open Source Podcast Search Engine 🔍
 
+⚠️ **Project Status Notice**
+
+I’m no longer actively maintaining or supporting Voilib. This repository
+is now archived. As AI advances at a blistering pace and the Python ecosystem
+evolves constantly, this project may become outdated or less useful as a
+learning resource over time. Still, I believe it retains archeological
+interest: it was created in the early days of RAG-style systems, when the
+“best practices” for building on top of them were far from settled. Use
+at your own risk, and feel free to fork it for experimentation or study.
+
+You can read more about this decision [in my blog](https://unmonoqueteclea.github.io/2025-09-15-re:-status-of-voilib-and-building-ai-tools.html)
+
+---
+
 Voilib offers **semantic search** in thousands of minutes of
 high-quality transcriptions of podcasts. Just type your query and it
 will find related content in thousands of episodes. Voilib also allows
