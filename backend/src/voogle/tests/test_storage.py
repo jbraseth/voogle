@@ -1,7 +1,7 @@
 # Copyright (c) 2023 Pablo González Carrizo (unmonoqueteclea)
 # All rights reserved.
 
-from voilib import storage
+from voogle import storage
 
 
 async def test_episodes(channel) -> None:  # type: ignore

@@ -12,7 +12,7 @@ import re
 import time
 import unicodedata
 
-from voilib import settings
+from voogle import settings
 
 
 def slugify(value: str) -> str:

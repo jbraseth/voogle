@@ -10,7 +10,7 @@ import argparse
 import asyncio
 import logging
 
-from voilib import collection, models, tasks
+from voogle import collection, models, tasks
 
 logger = logging.getLogger(__name__)
 

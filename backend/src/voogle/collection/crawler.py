@@ -13,7 +13,7 @@ import json
 import logging
 from typing import Optional
 
-from voilib import models, storage
+from voogle import models, storage
 from voogle.collection import feed, local
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def default_channels() -> list[dict]:
     """Return list of default hardcoded podcast feeds"""
-    with importlib.resources.open_text("voilib.collection", "urls.json") as f:
+    with importlib.resources.open_text("voogle.collection", "urls.json") as f:
         data = json.load(f)
     return data
 

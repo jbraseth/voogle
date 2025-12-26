@@ -2,7 +2,7 @@
 # All rights reserved.
 
 import streamlit as st
-from voilib import __version__
+from voogle import __version__
 from voogle.management import utils
 
 st.set_page_config(page_title="Voilib", page_icon="🎧")

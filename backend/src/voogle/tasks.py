@@ -13,7 +13,7 @@ import qdrant_client
 import sentence_transformers
 from qdrant_client.models import Filter
 
-from voilib import collection, embedding, models, settings, transcription, utils, vector
+from voogle import collection, embedding, models, settings, transcription, utils, vector
 
 logger = logging.getLogger(__name__)
 

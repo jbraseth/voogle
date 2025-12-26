@@ -29,7 +29,7 @@ unauthenticated endpoints)
 
 ## settings
 All the application settings are defined in
-[settings.py](./src/voilib/settings.py) module.  That module contains
+[settings.py](./src/voogle/settings.py) module.  That module contains
 default values for all the settings (those default values are used
 when running the application locally, without Docker). In Docker-based
 deployments, those settings will be usually taken automatically from
@@ -62,14 +62,14 @@ trigger Python scripts.
 Voilib uses two databases:
 
 - A **relational `SQLite` database** stores some metadata about podcasts
-  and their episodes. See [db.py](./src/voilib/db.py)
+  and their episodes. See [db.py](./src/voogle/db.py)
 - A **vector database**, [Qdrant](https://qdrant.tech/), stores
   embeddings of episodes transcription fragments. By default, in tests
   and local development that database is just a file stored locally
   without the need of any other service. In production, we are
   lunching a `Qdrant` container. See
-  [vector.py](./src/voilib/vector.py). Connection data is defined in
-  [settings.py](./src/voilib/settings.py)
+  [vector.py](./src/voogle/vector.py). Connection data is defined in
+  [settings.py](./src/voogle/settings.py)
 
 ## asynchronous tasks with rq
 Some tasks such as **transcribing** or **calculating embeddings** are
@@ -77,7 +77,7 @@ very long and can't be done in the some process that is answering API
 requests. That's why we used an extremely simple job queues system,
 [rq](https://python-rq.org/), using [Redis](https://redis.io/) as its
 message broker. It's configured in [worker.py
-module](./src/voilib/worker.py).
+module](./src/voogle/worker.py).
 
 Check [tasks.py module](./src/voilib.tasks.py) to see some examples of
 functions adding new tasks to the queue that will be executed by the
@@ -87,7 +87,7 @@ run in a different container).
 
 ## episodes transcription
 For transcription (see
-[transcription.py](./src/voilib/transcription.py) module) Voilib uses
+[transcription.py](./src/voogle/transcription.py) module) Voilib uses
 [Whisper: Open AI's Open Source Transcription
 Model](https://openai.com/research/whisper), running locally with the
 help of [faster-whisper](https://github.com/guillaumekln/faster-whisper/)
@@ -101,7 +101,7 @@ start_time | end_time | transcribed_sentence
 ```
 
 All the transcriptions are stored in the `media folder` (defined in
-[settings.py](./src/voilib/settings.py)).
+[settings.py](./src/voogle/settings.py)).
 
 
 ## embeddings calculation
@@ -133,7 +133,7 @@ can be used with dot-product, cosine-similarity or euclidean distance
 (all three scoring function will produce the same results).
 
 All the embedding calculation configuration and main functions can be
-found in [embedding.py module](./src/voilib/embedding.py).
+found in [embedding.py module](./src/voogle/embedding.py).
 
 
 ## contributing

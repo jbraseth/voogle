@@ -5,7 +5,7 @@ import asyncio
 
 import streamlit as st
 
-from voilib import collection, models, routers, settings, tasks
+from voogle import collection, models, routers, settings, tasks
 from voogle.management import utils as m_utils
 
 

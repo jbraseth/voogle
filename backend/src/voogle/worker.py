@@ -9,7 +9,7 @@ import logging
 import redis  # type: ignore
 from rq import Worker  # type: ignore
 
-from voilib import settings
+from voogle import settings
 
 # without this, we wouldn't be able to see logs in the workers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")

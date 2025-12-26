@@ -9,7 +9,7 @@ from datetime import datetime
 import pytest
 import sqlalchemy
 from starlette.testclient import TestClient
-from voilib import auth, collection, db, main, models, storage, transcription
+from voogle import auth, collection, db, main, models, storage, transcription
 from voogle.settings import settings
 
 EXAMPLE_CHANNEL_FEED = "https://feeds.simplecast.com/5dXzywz5"

@@ -9,10 +9,10 @@ import argparse
 import asyncio
 import logging
 from voogle.models import users
-from voilib import auth, settings, transcription
+from voogle import auth, settings, transcription
 
 logger = logging.getLogger(__name__)
-CREATE_DEFAULT_ADMIN_USER = "create (if not exists) the default voilib admin user"
+CREATE_DEFAULT_ADMIN_USER = "create (if not exists) the default voogle admin user"
 FIX_TRANSCRIBED = """fixing episodes' transcribed field if they have
 an existing transcription file"""
 

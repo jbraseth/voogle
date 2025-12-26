@@ -16,7 +16,7 @@ import qdrant_client
 import sentence_transformers
 from qdrant_client import models
 
-from voilib import embedding, settings, storage
+from voogle import embedding, settings, storage
 from voogle.models import Episode
 
 DEFAULT_COLLECTION: str = "vectordb"

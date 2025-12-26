@@ -8,7 +8,7 @@ from datetime import timedelta
 import fastapi
 import fastapi.security
 
-from voilib import auth, settings
+from voogle import auth, settings
 from voogle.models import users
 from voogle.schemas import users as user_schemas
 

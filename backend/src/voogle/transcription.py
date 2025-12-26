@@ -12,7 +12,7 @@ import time
 
 from faster_whisper import WhisperModel
 
-from voilib import storage, utils
+from voogle import storage, utils
 from voogle.models import media
 
 logger = logging.getLogger(__name__)

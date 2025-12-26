@@ -11,7 +11,7 @@ import databases
 import sqlalchemy
 from fastapi import FastAPI
 
-from voilib import settings
+from voogle import settings
 
 
 def get_db_url() -> str:

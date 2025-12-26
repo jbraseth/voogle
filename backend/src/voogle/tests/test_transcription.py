@@ -2,7 +2,7 @@
 # All rights reserved.
 
 import pytest
-from voilib import transcription
+from voogle import transcription
 
 
 @pytest.mark.skip(reason="not reliable between different versions")

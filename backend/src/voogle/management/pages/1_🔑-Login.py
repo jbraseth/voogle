@@ -6,7 +6,7 @@ import typing
 from datetime import timedelta
 
 import streamlit as st
-from voilib import auth
+from voogle import auth
 
 st.set_page_config(page_title="Voilib", page_icon="🎧")
 st.title("🔑 Login")

@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, Depends
 from fastapi_pagination import Page
 from fastapi_pagination.ext.ormar import paginate
-from voilib import auth
+from voogle import auth
 from voogle.models import analytics, media, users
 from voogle.schemas import analytics as analytics_schemas
 

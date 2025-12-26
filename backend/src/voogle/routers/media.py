@@ -8,7 +8,7 @@ from typing import Optional
 import fastapi
 from fastapi_pagination import Page
 from fastapi_pagination.ext.ormar import paginate
-from voilib import auth, storage, tasks, transcription
+from voogle import auth, storage, tasks, transcription
 from voogle.collection import crawler
 from voogle.models import analytics, media, users
 from voogle.schemas import media as media_schemas

@@ -15,8 +15,8 @@ import numpy as np
 import sentence_transformers
 import torch
 
-from voilib import models, storage
-from voilib import transcription as tr
+from voogle import models, storage
+from voogle import transcription as tr
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ import shutil
 
 import requests  # type: ignore
 
-from voilib import settings, storage
+from voogle import settings, storage
 from voogle.models import media
 from voogle.utils import slugify
 

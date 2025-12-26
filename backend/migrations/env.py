@@ -16,7 +16,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 from voogle.models import media, users, analytics  # type: ignore  # noqa: F401
 
-from voilib import db
+from voogle import db
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,7 +1,7 @@
 # Copyright (c) 2023 Pablo González Carrizo (unmonoqueteclea)
 # All rights reserved.
 
-"""voilib back-end and API.
+"""voogle back-end and API.
 
 This module defines the __version__ variable, obtained from package
 metadata.

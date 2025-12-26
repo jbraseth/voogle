@@ -8,7 +8,7 @@ filesystem.
 import logging
 from datetime import datetime
 
-from voilib import models, storage
+from voogle import models, storage
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@
 import typing
 
 from pydantic import BaseModel
-from voilib import transcription
+from voogle import transcription
 from voogle.models.base import CoreModel
 from voogle.models.media import Channel, Episode
 

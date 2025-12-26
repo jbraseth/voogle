@@ -18,7 +18,7 @@ from fastapi import security
 from jose import JWTError, jwt
 from passlib import context
 
-from voilib import models
+from voogle import models
 from voogle.settings import settings
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 60

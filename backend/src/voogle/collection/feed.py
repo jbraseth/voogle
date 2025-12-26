@@ -18,7 +18,7 @@ import dateutil.parser
 import requests  # type: ignore
 import xmltodict
 
-from voilib import models
+from voogle import models
 
 IGNORE_EPISODES_TYPES: list[str] = ["bonus", "trailer"]
 

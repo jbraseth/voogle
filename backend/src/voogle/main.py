@@ -11,7 +11,7 @@ from fastapi.middleware import cors
 from fastapi_pagination import add_pagination
 
 import voogle
-from voilib import db, routers
+from voogle import db, routers
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
