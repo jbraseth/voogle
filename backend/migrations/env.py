@@ -14,7 +14,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-from voilib.models import media, users, analytics  # type: ignore  # noqa: F401
+from voogle.models import media, users, analytics  # type: ignore  # noqa: F401
 
 from voilib import db
 

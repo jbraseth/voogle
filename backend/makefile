@@ -2,7 +2,7 @@
 # All rights reserved.
 
 help:
-	@echo "voilib - podcast search engine - backend Python project     "
+	@echo "voogle - podcast search engine - backend Python project     "
 	@echo "                                                            "
 	@echo "Available targets:                                          "
 	@echo "    - help: show this help message                          "
@@ -11,8 +11,8 @@ help:
 	@echo "    - migrate: apply all migrations                         "
 
 start:
-	@echo "running voilib (locally) in port 8080..."
-	uvicorn src.voilib.main:app --reload --host 0.0.0.0 --port 8080
+	@echo "running voogle (locally) in port 8080..."
+	uvicorn src.voogle.main:app --reload --host 0.0.0.0 --port 8080
 
 
 gen-migrations:
