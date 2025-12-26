@@ -1,5 +1,5 @@
 version: "3.9"
-name: voilib-backend
+name: voogle-backend
 
 x-defaults: &defaults
   logging:
@@ -11,7 +11,7 @@ x-defaults: &defaults
 services:
   backend:
     <<: *defaults
-    image: voilib-backend:latest
+    image: voogle-backend:latest
     build:
       context: ../../backend
       dockerfile: dockerfile
@@ -22,13 +22,13 @@ services:
         condition: service_healthy
     expose:
       - 80  # we do not want to publish this port, as we will access through traefik
-    command:  uvicorn src.voilib.main:app --proxy-headers --host 0.0.0.0 --root-path /service --port 80
+    command:  uvicorn src.voogle.main:app --proxy-headers --host 0.0.0.0 --root-path /service --port 80
     volumes:
       - ../../data-production/:/data/
     labels:
       - "traefik.enable=true"
       # expose the backend in the /service endpoint
-      - "traefik.http.routers.api.rule=(Host(`voilib.com`) && PathPrefix(`/service`))"
+      - "traefik.http.routers.api.rule=(Host(`voogle.example.com`) && PathPrefix(`/service`))"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=myresolver"
       - "traefik.http.routers.api.middlewares=api"
@@ -46,7 +46,7 @@ services:
 
   frontend:
     <<: *defaults
-    image: voilib-ui:latest
+    image: voogle-ui:latest
     depends_on:
       backend:
         condition: service_healthy
@@ -61,7 +61,7 @@ services:
         API_PREFIX: ${VITE_API_PREFIX:?err}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ui.rule=(Host(`voilib.com`) && PathPrefix(`/`))"
+      - "traefik.http.routers.ui.rule=(Host(`voogle.example.com`) && PathPrefix(`/`))"
       - "traefik.http.routers.ui.entrypoints=websecure"
       - "traefik.http.routers.ui.tls.certresolver=myresolver"
       - "traefik.port=80"
@@ -73,17 +73,17 @@ services:
 
   management:
     <<: *defaults
-    image: voilib-backend:latest
+    image: voogle-backend:latest
     depends_on:
       backend:
         condition: service_healthy
     ports:
       - 8501:8501
-    command: streamlit run src/voilib/management/🏠-Home.py
+    command: streamlit run src/voogle/management/🏠-Home.py
     labels:
       - "traefik.enable=true"
       # expose the backend in the /service endpoint
-      - "traefik.http.routers.management.rule=(Host(`voilib.com`) && PathPrefix(`/management`))"
+      - "traefik.http.routers.management.rule=(Host(`voogle.example.com`) && PathPrefix(`/management`))"
       - "traefik.http.routers.management.entrypoints=websecure"
       - "traefik.http.routers.management.tls.certresolver=myresolver"
       - "traefik.http.routers.management.middlewares=management"
@@ -105,11 +105,11 @@ services:
 
   worker:
     <<: *defaults
-    image: voilib-backend:latest
+    image: voogle-backend:latest
     depends_on:
       redis:
         condition: service_healthy
-    command: python src/voilib/worker.py
+    command: python src/voogle/worker.py
     volumes:
       - ../../data-production/:/data/
     restart: unless-stopped
