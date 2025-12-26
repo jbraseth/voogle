@@ -20,8 +20,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    env_file:
-      - .env.prod
     expose:
       - 80  # we do not want to publish this port, as we will access through traefik
     command:  uvicorn src.voilib.main:app --proxy-headers --host 0.0.0.0 --root-path /service --port 80
@@ -52,8 +50,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    env_file:
-      - .env.prod
     expose:
       - 80 # expose the port just internally, as we are using traefik
     build:
@@ -81,8 +77,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    env_file:
-      - .env.prod
     ports:
       - 8501:8501
     command: streamlit run src/voilib/management/🏠-Home.py
@@ -115,8 +109,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    env_file:
-      - .env.prod
     command: python src/voilib/worker.py
     volumes:
       - ../../data-production/:/data/

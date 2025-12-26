@@ -16,12 +16,12 @@ need to rebuild the `Docker` images every time you change something in
 the code.
 
 - The [compose.yml](./development/compose.yml) file expects a
-`.env.dev` file in the [./development/](./development) folder with the
+`.env` file in the [./development/](./development) folder with the
 needed environment variables.  **You should create it before building
 any service**, you can copy the provided
-[.env.dev.example](./development/.env.dev.example).
+[.env.example](./development/.env.example).
 
-▶️ When the `.env.dev` file is created, you can build the Docker images
+▶️ When the `.env` file is created, you can build the Docker images
 for all the services with `make dev-build` (it performs a `docker
 compose build`) and run all of them with `make dev-run` (it performs a
 `docker compose up`). The following services will be available:
@@ -40,9 +40,9 @@ compose build`) and run all of them with `make dev-run` (it performs a
 
 ## In production...
 - As in development (read [that section](#in-development-mode) first),
-**you must create a `.env.prod` file** in the
+**you must create a `.env` file** in the
 [./production/](./production) folder from the provided example:
-[.env.prod.example](./production/.env.prod.example)
+[.env.example](./production/.env.example)
 
 - When you do it, ensure to use your own domain in `VITE_API_HOST`.
 Replace it also in the following lines from the `compose.yml` file
@@ -68,7 +68,7 @@ Replace it also in the following lines from the `compose.yml` file
  replace with your own domain.
 
 -  You should change the default `SECRET_KEY` provided in
- [.env.prod.example](./production/.env.prod.example) by running the
+ [.env.example](./production/.env.example) by running the
  suggested command, and also the `ADMIN_PASSWORD`.
 
 ▶️ To build all the production images and run them, use `make prod-build`
@@ -91,13 +91,13 @@ episodes. To ensure the database file with all the needed tables is
 created you should run the following command from [infra/ folder](./):
 
 ```bash
-cd development && docker compose --env-file=.env.dev exec backend alembic upgrade head
+cd development && docker compose exec backend alembic upgrade head
 ```
 
 ...or this one in production:
 
 ```bash
-cd production && docker compose --env-file=.env.prod exec backend alembic upgrade head
+cd production && docker compose exec backend alembic upgrade head
 ```
 
 
@@ -137,14 +137,14 @@ The following command (run it from from [infra/ folder](./)) will
 start collecting episodes from all the configured feeds:
 
 ```bash
-cd development && docker compose --env-file=.env.dev exec worker voilib-episodes --update
+cd development && docker compose exec worker voilib-episodes --update
 ```
 
 ...or this one in production:
 
 
 ```bash
-cd production && docker compose --env-file=.env.prod exec worker voilib-episodes --update
+cd production && docker compose exec worker voilib-episodes --update
 ```
 
 ### 🕒 Configuring periodic collect/transcript/index jobs
@@ -158,13 +158,13 @@ my development configuration (assuming you work in Linux, run `crontab
 
 ```bash
 # update list of episodes every 6 hours
-0 */6 * * * cd /{change-me}/voilib/infra/development && docker compose --env-file=.env.dev exec worker voilib-episodes --update
+0 */6 * * * cd /{change-me}/voilib/infra/development && docker compose exec worker voilib-episodes --update
 
 # transcribe last day episodes every 12 hours
-20 */12 * * * cd /{change-me}/accushoot/voilib/infra/development && docker compose --env-file=.env.dev exec worker voilib-episodes --transcribe-days 1
+20 */12 * * * cd /{change-me}/accushoot/voilib/infra/development && docker compose exec worker voilib-episodes --transcribe-days 1
 
 # index pending episodes every 6 hours
-40 */6 * * * cd /{change-me}/voilib/infra/development && docker compose --env-file=.env.dev exec worker voilib-episodes --store
+40 */6 * * * cd /{change-me}/voilib/infra/development && docker compose exec worker voilib-episodes --store
 
 ```
 
@@ -173,13 +173,13 @@ my development configuration (assuming you work in Linux, run `crontab
 
 ```bash
 # update list of episodes every 6 hours
-0 */6 * * * cd /{change-me}/voilib/infra/production && docker compose --env-file=.env.prod exec worker voilib-episodes --update
+0 */6 * * * cd /{change-me}/voilib/infra/production && docker compose exec worker voilib-episodes --update
 
 # transcribe last day episodes every 12 hours
-20 */12 * * * cd /{change-me}/accushoot/voilib/infra/production && docker compose --env-file=.env.prod exec worker voilib-episodes --transcribe-days 1
+20 */12 * * * cd /{change-me}/accushoot/voilib/infra/production && docker compose exec worker voilib-episodes --transcribe-days 1
 
 # index pending episodes every 6 hours
-40 */6 * * * cd /{change-me}/voilib/infra/production && docker compose --env-file=.env.prod exec worker voilib-episodes --store
+40 */6 * * * cd /{change-me}/voilib/infra/production && docker compose exec worker voilib-episodes --store
 ```
 
 Don't forget to change all `/{change-me}` to the actual path that
