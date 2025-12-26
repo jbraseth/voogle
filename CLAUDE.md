@@ -170,14 +170,14 @@ make prod-run
 ```bash
 # Native dev (recommended - after pip install -e .[dev])
 cd backend
-voilib-episodes --update                  # Fetch new episodes from feeds
-voilib-episodes --transcribe-days 7       # Transcribe last 7 days
-voilib-episodes --store                   # Index pending transcriptions
+voogle-episodes --update                  # Fetch new episodes from feeds
+voogle-episodes --transcribe-days 7       # Transcribe last 7 days
+voogle-episodes --store                   # Index pending transcriptions
 
 # If using Docker dev workflow (after make dev-run)
 cd infra/development
-docker compose exec worker voilib-episodes --update
-docker compose exec worker voilib-episodes --transcribe-days 7
+docker compose exec worker voogle-episodes --update
+docker compose exec worker voogle-episodes --transcribe-days 7
 ```
 
 ---
@@ -195,8 +195,8 @@ cd infra/development
 docker compose exec backend alembic upgrade head
 
 # Database files
-# - Development: ./data/voilib.db
-# - Production: ./data-production/voilib.db
+# - Development: ./data/voogle.db
+# - Production: ./data-production/voogle.db
 ```
 
 ---
@@ -267,7 +267,7 @@ See [CHANGELOG.md](CHANGELOG.md) for recent changes and reasoning.
 
 ### Security
 - Admin endpoints require JWT authentication
-- Default admin: `voilib-admin` / `*audio*search*engine` (change in production!)
+- Default admin: `voogle-admin` / `*audio*search*engine` (change in production!)
 - All external input validated at API boundary
 
 ## Environment
@@ -311,7 +311,7 @@ voogle/
 ├── docs/                         # Project documentation
 │   └── plan.md                  # Current task planning
 ├── data/                         # Development runtime data (git-ignored)
-│   ├── voilib.db                # SQLite database
+│   ├── voogle.db                # SQLite database
 │   ├── media/                   # Audio files and transcriptions
 │   └── qdrant/                  # Vector database storage
 ├── CLAUDE.md                     # This file - Claude Code context

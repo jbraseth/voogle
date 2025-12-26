@@ -104,7 +104,7 @@ cd production && docker compose exec backend alembic upgrade head
 ###  👤 Creating and admin user
 
 > ℹ️ In Docker-based installations, Voilib will create automatically
-> the admin user. By default, username will be `voilib-admin` and
+> the admin user. By default, username will be `voogle-admin` and
 > password `*audio*search*engine`, although they can be configured
 > with environment variables. So, you can skip this step.
 
@@ -112,7 +112,7 @@ cd production && docker compose exec backend alembic upgrade head
 Open `Swagger` at and use the `/users/signup` endpoint to register a
 new user. You can use whatever email or password you want but, to
 ensure the user is automatically recognized as an admin, you should
-use the username **`voilib-admin`**.
+use the username **`voogle-admin`**.
 
 > ℹ️ There is a setting with the name `admin_username` to tell
 > `FastAPI` the username we want to be automatically promoted to admin
@@ -137,14 +137,14 @@ The following command (run it from from [infra/ folder](./)) will
 start collecting episodes from all the configured feeds:
 
 ```bash
-cd development && docker compose exec worker voilib-episodes --update
+cd development && docker compose exec worker voogle-episodes --update
 ```
 
 ...or this one in production:
 
 
 ```bash
-cd production && docker compose exec worker voilib-episodes --update
+cd production && docker compose exec worker voogle-episodes --update
 ```
 
 ### 🕒 Configuring periodic collect/transcript/index jobs
@@ -158,13 +158,13 @@ my development configuration (assuming you work in Linux, run `crontab
 
 ```bash
 # update list of episodes every 6 hours
-0 */6 * * * cd /{change-me}/voilib/infra/development && docker compose exec worker voilib-episodes --update
+0 */6 * * * cd /{change-me}/voilib/infra/development && docker compose exec worker voogle-episodes --update
 
 # transcribe last day episodes every 12 hours
-20 */12 * * * cd /{change-me}/accushoot/voilib/infra/development && docker compose exec worker voilib-episodes --transcribe-days 1
+20 */12 * * * cd /{change-me}/accushoot/voilib/infra/development && docker compose exec worker voogle-episodes --transcribe-days 1
 
 # index pending episodes every 6 hours
-40 */6 * * * cd /{change-me}/voilib/infra/development && docker compose exec worker voilib-episodes --store
+40 */6 * * * cd /{change-me}/voilib/infra/development && docker compose exec worker voogle-episodes --store
 
 ```
 
@@ -173,13 +173,13 @@ my development configuration (assuming you work in Linux, run `crontab
 
 ```bash
 # update list of episodes every 6 hours
-0 */6 * * * cd /{change-me}/voilib/infra/production && docker compose exec worker voilib-episodes --update
+0 */6 * * * cd /{change-me}/voilib/infra/production && docker compose exec worker voogle-episodes --update
 
 # transcribe last day episodes every 12 hours
-20 */12 * * * cd /{change-me}/accushoot/voilib/infra/production && docker compose exec worker voilib-episodes --transcribe-days 1
+20 */12 * * * cd /{change-me}/accushoot/voilib/infra/production && docker compose exec worker voogle-episodes --transcribe-days 1
 
 # index pending episodes every 6 hours
-40 */6 * * * cd /{change-me}/voilib/infra/production && docker compose exec worker voilib-episodes --store
+40 */6 * * * cd /{change-me}/voilib/infra/production && docker compose exec worker voogle-episodes --store
 ```
 
 Don't forget to change all `/{change-me}` to the actual path that
