@@ -56,7 +56,7 @@
       generated summaries to your subscribers?
     </p>
     <p class="mt-2 max-w-2xl text-center">
-      Check <a class="ml-1 underline" href="/pro">Voilib PRO</a>.
+      Check <a class="ml-1 underline" href="/pro">Voogle PRO</a>.
     </p>
   </div>
 

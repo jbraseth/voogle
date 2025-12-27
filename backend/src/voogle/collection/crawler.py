@@ -46,13 +46,13 @@ async def get_or_create_channel(
 
 
 async def add_default_channels() -> int:
-    """Add all the default channels hardcoded in Voilib's code (see
+    """Add all the default channels hardcoded in Voogle's code (see
     urls.json)
 
     Return the number of channels added
 
     """
-    logger.info("adding all the Voilib default channels ")
+    logger.info("adding all the Voogle default channels ")
     total = 0
     for podcast in default_channels():
         url = podcast["url"]

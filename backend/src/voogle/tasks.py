@@ -1,7 +1,7 @@
 # Copyright (c) 2023 Pablo González Carrizo (unmonoqueteclea)
 # All rights reserved.
 
-"""Main voilib data tasks
+"""Main voogle data tasks
 """
 
 import logging

@@ -36,7 +36,7 @@ async def add_local_channel():
     st.header("Add local channel")
     st.markdown(
         """For each local channel you want to include, create a folder within
-   Voilib's `data/local/` folder and put there all the audio files
+   Voogle's `data/local/` folder and put there all the audio files
    (`mp3` or `wav`) you want to be indexed.
 
 
@@ -99,7 +99,7 @@ async def podcasts_and_episodes():
 
 
 async def main():
-    st.set_page_config(page_title="Voilib", page_icon="🎧")
+    st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("📻 Media")
     if m_utils.login_message(st.session_state):
         await add_channel()

@@ -8,7 +8,7 @@ from datetime import timedelta
 import streamlit as st
 from voogle import auth
 
-st.set_page_config(page_title="Voilib", page_icon="🎧")
+st.set_page_config(page_title="Voogle", page_icon="🎧")
 st.title("🔑 Login")
 
 SHOW_LOGIN_FORM = True

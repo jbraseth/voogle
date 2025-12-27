@@ -10,8 +10,8 @@ router = fastapi.APIRouter(prefix="/app", tags=["app"])
 
 @router.get("/version", summary="Return application version")
 async def version() -> dict:
-    """Return voilib back-end version.
+    """Return voogle back-end version.
 
-    It is the version of the Voilib Python package.
+    It is the version of the Voogle Python package.
     """
-    return {"version": voilib.__version__}
+    return {"version": voogle.__version__}

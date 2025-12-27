@@ -25,6 +25,6 @@ level = "INFO"
 
 
 [certificatesResolvers.myresolver.acme]
-  email = "admin@voilib.com"
+  email = "admin@voogle.com"
   storage = "/cert/acme.json"
   [certificatesResolvers.myresolver.acme.tlsChallenge]

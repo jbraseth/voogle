@@ -15,7 +15,7 @@ from voogle import db, routers
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
-app = fastapi.FastAPI(title="voilib", version=voilib.__version__)
+app = fastapi.FastAPI(title="voogle", version=voogle.__version__)
 
 app.add_middleware(
     cors.CORSMiddleware,

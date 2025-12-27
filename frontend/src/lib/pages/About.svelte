@@ -8,7 +8,7 @@
       Text is not the only source of knowledge any more.
     </h2>
     <p class="mt-2 text-xl max-w-2xl text-center">
-      <span class="font-medium">Voilib</span> has an army of monkeys
+      <span class="font-medium">Voogle</span> has an army of monkeys
       trained to make audio content from multiple sources accessible
       for everyone. Check the list of <a class="underline"
       href="/content">episodes</a>.

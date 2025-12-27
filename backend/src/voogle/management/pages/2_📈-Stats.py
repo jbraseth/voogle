@@ -10,12 +10,12 @@ from voogle.models import analytics
 
 
 async def main():
-    st.set_page_config(page_title="Voilib", page_icon="🎧")
+    st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("📈 Stats")
     if utils.login_message(st.session_state):
         tab_last, tab_graphs = st.tabs(["Last queries", "Queries per day"])
         with tab_last:
-            st.write("Last 20 queries performed by Voilib users")
+            st.write("Last 20 queries performed by Voogle users")
             qs = await analytics.Query.objects.order_by("-created_at").limit(20).all()
             markdown_queries = ""
             for query in qs:

@@ -12,7 +12,7 @@ from voogle.management import utils as m_utils
 async def load_default_channels():
     st.header("1. Load default channel list (only once)")
     st.markdown(
-        """Voilib comes with a predefined list of podcasts `RSS`
+        """Voogle comes with a predefined list of podcasts `RSS`
         feeds.  You can import them to ensure that the system will
         transcribe and index them. This is, usually, the first task
         that is performed in a new installation. **You should run this
@@ -38,7 +38,7 @@ async def load_local_channels():
     # st.markdown("**Load local channels**")
     st.markdown(
         """
->  ℹ️ Voilib also supports the creation of channels from
+>  ℹ️ Voogle also supports the creation of channels from
 >  **local audio files**. You can add them from [Media](./Media) page.
 
     """
@@ -108,14 +108,14 @@ async def store_pending():
 
 
 async def main():
-    st.set_page_config(page_title="Voilib", page_icon="🎧")
+    st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("⚙️ Tasks")
     if m_utils.login_message(st.session_state):
         st.markdown(
             """ This page contains all the **management tasks** to
-        handle your Voilib instance. Some of them will run
+        handle your Voogle instance. Some of them will run
         asynchronously in the tasks worker. If this is your first time
-        running Voilib, you should review all of them. """
+        running Voogle, you should review all of them. """
         )
         await load_default_channels()
         await load_local_channels()

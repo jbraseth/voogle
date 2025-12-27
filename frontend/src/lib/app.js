@@ -1,2 +1,2 @@
-const appname = "Voilib";
+const appname = "Voogle";
 export {appname};

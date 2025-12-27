@@ -1,4 +1,4 @@
-name: Voilib back-end tests
+name: Voogle back-end tests
 
 on: [push]
 
