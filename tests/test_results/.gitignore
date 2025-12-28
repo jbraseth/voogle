@@ -1,0 +1,7 @@
+# Ignore all test result files
+*.xml
+*.html
+*.json
+
+# But keep this directory in git
+!.gitignore
