@@ -4,10 +4,13 @@
 
 import pytest
 
+from starlette.testclient import TestClient
+
 pytestmark = pytest.mark.integration
 
 
-def test_version(client) -> None:
+@pytest.mark.description("Validates app version endpoint returns semantic version format")
+def test_version(client: TestClient) -> None:
     response = client.get("/app/version/").json()
     assert len(response["version"].split(".")) == 3
     assert response["version"] != "0.0.0"

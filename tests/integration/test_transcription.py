@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pathlib
+
 import pytest
 
 from voogle import transcription
@@ -10,7 +12,8 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.skip(reason="not reliable between different versions")
-def test_audio_transcription(tests_data_dir, jobs_transcription):  # type: ignore
+@pytest.mark.description("Tests audio transcription with Whisper, CSV storage, and retrieval")
+def test_audio_transcription(tests_data_dir: pathlib.Path, jobs_transcription: transcription.Transcription) -> None:
     audio = tests_data_dir / "jobs.mp3"
     tr = transcription.transcribe(audio)
     assert len(tr) > 0

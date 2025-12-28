@@ -5,21 +5,21 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from voogle import embedding, storage, transcription, vector
+from voogle import embedding, models, storage, transcription, vector
 
 pytestmark = pytest.mark.component
 
 
 @pytest.fixture
-def local_provider():
-    """Fixture for local embeddings provider"""
+def local_provider() -> embedding.LocalEmbeddingsProvider:
+    """Fixture for local embeddings provider."""
     model = embedding.load_embeddings_model(embedding.DEFAULT_EMBEDDINGS_MODEL)
     return embedding.LocalEmbeddingsProvider(model)
 
 
 @pytest.fixture
-def mock_openai_provider():
-    """Fixture for mocked OpenAI provider"""
+def mock_openai_provider() -> embedding.OpenAIEmbeddingsProvider:
+    """Fixture for mocked OpenAI provider."""
     with patch("openai.OpenAI") as mock_client:
         # Mock response for batch of embeddings
         mock_response = Mock()
@@ -34,7 +34,11 @@ def mock_openai_provider():
         yield provider
 
 
-async def test_calculate_fragments(jobs_transcription, fake_episode):
+@pytest.mark.description("Tests text fragmentation into embeddings with different word counts")
+async def test_calculate_fragments(
+    jobs_transcription: transcription.Transcription,
+    fake_episode: models.media.Episode,
+) -> None:
     embs = embedding.calculate_fragments(jobs_transcription, 20)
     assert len(embs) == 2
     tr = transcription.read_transcription(
@@ -47,7 +51,11 @@ async def test_calculate_fragments(jobs_transcription, fake_episode):
     assert len(embs) == 54
 
 
-async def test_store_embeddings(fake_episode, local_provider):
+@pytest.mark.description("Tests full embedding pipeline: calculate, store, and semantic search in vector DB")
+async def test_store_embeddings(
+    fake_episode: models.media.Episode,
+    local_provider: embedding.LocalEmbeddingsProvider,
+) -> None:
     # load vector database
     client = vector.get_client()
 
@@ -77,4 +85,3 @@ async def test_store_embeddings(fake_episode, local_provider):
         assert r.score
         assert r.start_secs
         assert r.end_secs
-    return
