@@ -3,7 +3,10 @@
 # All rights reserved.
 
 import pytest
+
 from voogle import transcription
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.mark.skip(reason="not reliable between different versions")

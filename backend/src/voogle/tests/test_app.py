@@ -2,6 +2,10 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pytest
+
+pytestmark = pytest.mark.integration
+
 
 def test_version(client) -> None:
     response = client.get("/app/version/").json()

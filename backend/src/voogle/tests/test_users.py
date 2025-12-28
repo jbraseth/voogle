@@ -2,7 +2,11 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pytest
+
 from voogle.settings import settings
+
+pytestmark = pytest.mark.integration
 
 
 def test_signup_login(client) -> None:  # type: ignore

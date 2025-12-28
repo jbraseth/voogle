@@ -2,6 +2,10 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pytest
+
+pytestmark = pytest.mark.integration
+
 
 def test_crud_episodes(channel, auth_client) -> None:  # type: ignore
     # list all episodes

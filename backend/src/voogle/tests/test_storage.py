@@ -2,7 +2,11 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pytest
+
 from voogle import storage
+
+pytestmark = pytest.mark.component
 
 
 async def test_episodes(channel) -> None:  # type: ignore

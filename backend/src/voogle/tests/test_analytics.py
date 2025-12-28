@@ -2,7 +2,11 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pytest
+
 from voogle.routers import media
+
+pytestmark = pytest.mark.integration
 
 
 async def test_queries(auth_client):

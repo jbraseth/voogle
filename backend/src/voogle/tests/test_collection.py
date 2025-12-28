@@ -2,7 +2,11 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pytest
+
 from voogle import collection
+
+pytestmark = pytest.mark.integration
 
 
 def test_default_channels() -> None:

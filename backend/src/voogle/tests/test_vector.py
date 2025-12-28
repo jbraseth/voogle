@@ -7,6 +7,8 @@ from unittest.mock import Mock, patch
 
 from voogle import embedding, storage, transcription, vector
 
+pytestmark = pytest.mark.component
+
 
 @pytest.fixture
 def local_provider():

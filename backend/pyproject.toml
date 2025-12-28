@@ -7,7 +7,12 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
-markers = []
+markers = [
+    "unit: Tests for pure functions and isolated logic without external dependencies",
+    "component: Tests for specific modules/components in isolation",
+    "integration: Tests that integrate multiple components (API + DB + services)",
+    "e2e: Tests for complete user workflows through the UI (browser-based)",
+]
 # set this to true if you need to debug something in the tests
 log_cli = false
 log_cli_level = "INFO"
