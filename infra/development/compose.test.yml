@@ -5,6 +5,8 @@ services:
       context: ../../backend
       dockerfile: dockerfile.test
 
+    working_dir: /app
+
     environment:
       - ENVIRONMENT=test
 
@@ -14,8 +16,8 @@ services:
     volumes:
       # Mount source for live code changes during test development
       - ../../backend/src:/backend/src:z
-      - ../../tests:/backend/tests:z
-      - ../../pytest.ini:/backend/pytest.ini:z
+      - ../../tests:/app/tests:z
+      - ../../pytest.ini:/app/pytest.ini:z
       - ../../data-test:/data:z
 
     depends_on:

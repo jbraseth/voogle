@@ -18,12 +18,11 @@ COMPOSE_FILES="-f compose.yml -f compose.test.yml"
 docker compose $COMPOSE_FILES build test >/dev/null 2>&1 || docker compose $COMPOSE_FILES build test
 
 # Ensure full stack is running (for e2e tests)
-# Start in dependency order: redis -> qdrant -> backend -> frontend
-for service in redis qdrant backend frontend; do
-    if ! docker ps --format '{{.Names}}' | grep -q "voogle_${service}_1"; then
-        docker compose -f compose.yml up -d --no-recreate $service >/dev/null 2>&1
-    fi
-done
+# Clean up any existing containers first
+docker compose -f compose.yml down >/dev/null 2>&1 || true
+
+# Start services in dependency order: redis -> qdrant -> backend -> frontend
+docker compose -f compose.yml up -d redis qdrant backend frontend >/dev/null 2>&1
 
 # Wait for backend to be healthy
 echo "Waiting for services to be ready..."
