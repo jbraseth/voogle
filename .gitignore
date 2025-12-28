@@ -1,40 +1,113 @@
+# =============================================================================
+# Environment Files
+# =============================================================================
 .env
-data/
-!backend/src/voilib/tests/data/
-pyrightconfig.json
+.env.local
+.env.*.local
+.env.dev
+.env.prod
+.env.production
+src/frontend/.env
+src/frontend/.env.local
+src/frontend/.env.*.local
+!.env.example
+!src/frontend/.env.development
+!src/frontend/.env.production
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
-.python-version
-__pycache__
-.mypy_cache
+.installed.cfg
+*.egg
+.pytest_cache/
 .coverage
-htmlcov
-.ruff_cache
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+.python-version
+.mypy_cache/
+.ruff_cache/
 pyrightconfig.json
-.projectile
-# Logs
-logs
-*.log
+
+# =============================================================================
+# Node.js / Frontend
+# =============================================================================
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
+dist/
+dist-ssr/
 *.local
 
-# Editor directories and files
-.vscode/*
+# =============================================================================
+# IDEs
+# =============================================================================
+.vscode/
 !.vscode/extensions.json
-.idea
+.idea/
+*.swp
+*.swo
+*.sw?
+*~
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
 .projectile
-.env.dev
-.env.prod
+
+# =============================================================================
+# Databases
+# =============================================================================
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+
+# =============================================================================
+# Logs & Temporary Files
+# =============================================================================
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+
+# =============================================================================
+# Claude
+# =============================================================================
+.claude/settings.local.json
+.claude-flow/
+.hive-mind/
+.swarm/
+!.mcp.json
+
+# =============================================================================
+# Project Specific
+# =============================================================================
+data/
+!backend/src/voogle/tests/data/

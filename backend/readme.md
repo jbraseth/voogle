@@ -1,8 +1,8 @@
-# Voilib - backend documentation
-Backend and API of **Voilib**, written in Python using
+# Voogle - backend documentation
+Backend and API of **Voogle**, written in Python using
 [FastAPI](https://fastapi.tiangolo.com/).
 
-![CI](https://github.com/unmonoqueteclea/voilib/actions/workflows/backend.yml/badge.svg)
+![CI](https://github.com/unmonoqueteclea/voogle/actions/workflows/backend.yml/badge.svg)
 
 For development, install the project locally with `pip install -e
 .[dev]` to ensure you use editable mode. Development dependencies such
@@ -15,7 +15,7 @@ instructions to run all the app services using Docker and the needed
 commands to start populating the application with content.
 
 ## REST API
-Voilib offers a **REST API** with some public endpoints and some
+Voogle offers a **REST API** with some public endpoints and some
 admin-only endpoints using `JWT`-based authentication. All the
 endpoints are documented and exposed through `Swagger` at
 [0.0.0.0:8080/docs](http://0.0.0.0:8080/docs) if running the project
@@ -24,12 +24,12 @@ locally or
 running the project using the provided `Docker Compose` configuration
 (`Traefik` is serving the API).
 
-Voilib frontend consumes this **REST API** (currently, just the
+Voogle frontend consumes this **REST API** (currently, just the
 unauthenticated endpoints)
 
 ## settings
 All the application settings are defined in
-[settings.py](./src/voilib/settings.py) module.  That module contains
+[settings.py](./src/voogle/settings.py) module.  That module contains
 default values for all the settings (those default values are used
 when running the application locally, without Docker). In Docker-based
 deployments, those settings will be usually taken automatically from
@@ -38,18 +38,18 @@ environment variables.
 You can use settings in any app module like this:
 
 ```python
-from voilib.settings import settings
+from voogle.settings import settings
 
 print(settings.redis_host)
 ```
 
 ## scripts
-The Voilib Python package includes some scripts to do some common
+The Voogle Python package includes some scripts to do some common
 tasks such as **updating episodes** from the list of feeds or
 **transcribing episodes** from the last X days. All the available
 tasks are defined in `[options.entry_points]` in
 [setup.cfg](./setup.cfg) file. You can use `--help` to see all their
-options, e.g. `voilib-management --help` or `voilib-episodes --help`.
+options, e.g. `voogle-management --help` or `voogle-episodes --help`.
 
 In the [first-run-tasks section of deployment
 docs](../infra/readme.md#first-run-tasks) we are using those scripts
@@ -59,17 +59,17 @@ them but you can use any other technology you want that is able to
 trigger Python scripts.
 
 ## databases
-Voilib uses two databases:
+Voogle uses two databases:
 
 - A **relational `SQLite` database** stores some metadata about podcasts
-  and their episodes. See [db.py](./src/voilib/db.py)
+  and their episodes. See [db.py](./src/voogle/db.py)
 - A **vector database**, [Qdrant](https://qdrant.tech/), stores
   embeddings of episodes transcription fragments. By default, in tests
   and local development that database is just a file stored locally
   without the need of any other service. In production, we are
   lunching a `Qdrant` container. See
-  [vector.py](./src/voilib/vector.py). Connection data is defined in
-  [settings.py](./src/voilib/settings.py)
+  [vector.py](./src/voogle/vector.py). Connection data is defined in
+  [settings.py](./src/voogle/settings.py)
 
 ## asynchronous tasks with rq
 Some tasks such as **transcribing** or **calculating embeddings** are
@@ -77,9 +77,9 @@ very long and can't be done in the some process that is answering API
 requests. That's why we used an extremely simple job queues system,
 [rq](https://python-rq.org/), using [Redis](https://redis.io/) as its
 message broker. It's configured in [worker.py
-module](./src/voilib/worker.py).
+module](./src/voogle/worker.py).
 
-Check [tasks.py module](./src/voilib.tasks.py) to see some examples of
+Check [tasks.py module](./src/voogle.tasks.py) to see some examples of
 functions adding new tasks to the queue that will be executed by the
 worker service (in the provided infrastructure configuration, it will
 run in a different container).
@@ -87,7 +87,7 @@ run in a different container).
 
 ## episodes transcription
 For transcription (see
-[transcription.py](./src/voilib/transcription.py) module) Voilib uses
+[transcription.py](./src/voogle/transcription.py) module) Voogle uses
 [Whisper: Open AI's Open Source Transcription
 Model](https://openai.com/research/whisper), running locally with the
 help of [faster-whisper](https://github.com/guillaumekln/faster-whisper/)
@@ -101,7 +101,7 @@ start_time | end_time | transcribed_sentence
 ```
 
 All the transcriptions are stored in the `media folder` (defined in
-[settings.py](./src/voilib/settings.py)).
+[settings.py](./src/voogle/settings.py)).
 
 
 ## embeddings calculation
@@ -118,7 +118,7 @@ sentences with similar meanings are close in vector space. One common
 method to measure the similarity in vector space is to use cosine
 similarity.
 
-For **asymmetric semantic search**, Voilib use case, you usually have a
+For **asymmetric semantic search**, Voogle use case, you usually have a
 short query (like a question or some keywords) and you want to find a
 longer paragraph answering the query. See  https://www.sbert.net/examples/applications/semantic-search/README.html#symmetric-vs-asymmetric-semantic-search.
 
@@ -133,7 +133,7 @@ can be used with dot-product, cosine-similarity or euclidean distance
 (all three scoring function will produce the same results).
 
 All the embedding calculation configuration and main functions can be
-found in [embedding.py module](./src/voilib/embedding.py).
+found in [embedding.py module](./src/voogle/embedding.py).
 
 
 ## contributing

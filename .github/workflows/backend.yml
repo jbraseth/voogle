@@ -1,4 +1,4 @@
-name: Voilib back-end tests
+name: Voogle back-end tests
 
 on: [push]
 
@@ -19,7 +19,14 @@ jobs:
       - name: Install dependencies
         working-directory: ./backend
         run: |
-          sudo apt-get install -y ffmpeg
+          sudo apt-get update
+          # TEMPORARY: FFmpeg dev libraries only needed for PyAV 10.0.0 (no prebuilt wheels)
+          # Remove these after upgrading to PyAV >=12.x: pkg-config, libavformat-dev,
+          # libavcodec-dev, libavdevice-dev, libavutil-dev, libswscale-dev,
+          # libswresample-dev, libavfilter-dev
+          sudo apt-get install -y ffmpeg pkg-config \
+            libavformat-dev libavcodec-dev libavdevice-dev \
+            libavutil-dev libswscale-dev libswresample-dev libavfilter-dev
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install .[dev]

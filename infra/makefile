@@ -1,5 +1,5 @@
 help:
-	@echo "Voilib Infrastructure                                      "
+	@echo "Voogle Infrastructure                                      "
 	@echo "\nAvailable targets for development: "
 	@echo " - make dev-build: build Docker images in development mode        "
 	@echo " - make dev-run: start all services in development mode    "
@@ -9,21 +9,21 @@ help:
 
 
 test-env-dev:
-	@echo "checking if .env.dev exists in ./development, you should have created it"
-	test -s ./development/.env.dev
+	@echo "checking if .env exists in ./development, you should have created it"
+	test -s ./development/.env
 
 test-env-prod:
-	@echo "checking if .env.prod exists in ./production, you should have created it"
-	test -s ./production/.env.prod
+	@echo "checking if .env exists in ./production, you should have created it"
+	test -s ./production/.env
 
 dev-build: test-env-dev
-	cd development/ && docker compose --env-file=.env.dev build
+	cd development/ && docker compose build
 
 dev-run: test-env-dev
-	cd development/ && docker compose --env-file=.env.dev up
+	cd development/ && docker compose up
 
 prod-build: test-env-prod
-	cd production/ && docker compose --env-file=.env.prod build
+	cd production/ && docker compose build
 
 prod-run: test-env-prod
-	cd production/ && docker compose --env-file=.env.prod up
+	cd production/ && docker compose up

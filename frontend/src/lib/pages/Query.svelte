@@ -97,7 +97,7 @@
     </button>
   </div>
   <div class="mt-6 mx-5 md:mx-16 text-gray-500">
-    ℹ️ Voilib will find related content in episodes
+    ℹ️ Voogle will find related content in episodes
     transcriptions. Trying to find specific podcast episodes names
     won't be useful.
   </div>
@@ -108,7 +108,7 @@
   </div>
 
   <div class="mt-2 mx-5 md:mx-16 text-gray-500">
-    🖤 Voilib doesn't offer any paid service.
+    🖤 Voogle doesn't offer any paid service.
     <a target="_blank" class="underline ml-1 mr-1" href="https://ko-fi.com/unmonoqueteclea">Help me</a>
     ensure the continued availability and accessibility of it.
   </div>
