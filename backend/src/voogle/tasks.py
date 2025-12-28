@@ -7,7 +7,7 @@
 
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import qdrant_client
@@ -42,7 +42,7 @@ async def update_channels() -> int:
 
 
 async def transcribe_episodes(
-    num_days: int, channel: Optional[models.Channel] = None, random_order=True
+    num_days: int, channel: Optional[models.Channel] = None, random_order: bool = True
 ) -> int:
     """Transcribe episodes, in a random order, from the last num_days
     days. Return the total number of episodes transcribed.
@@ -51,7 +51,7 @@ async def transcribe_episodes(
     channel_info = f"channel {channel.pk}: {channel.title}" if channel else ""
     logger.info(f"transcribing episodes from last {num_days} days. {channel_info}")
     qs = models.Episode.objects.filter(
-        transcribed=False, date__gt=datetime.now() - timedelta(days=num_days)
+        transcribed=False, date__gt=datetime.now(timezone.utc) - timedelta(days=num_days)
     )
     if channel:
         qs = qs.filter(channel=channel)

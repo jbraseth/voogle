@@ -11,7 +11,6 @@ don't interact with the database.
 from __future__ import annotations
 
 import logging
-import typing
 import xml.parsers.expat
 from datetime import datetime
 
@@ -46,7 +45,7 @@ def _episode_date(date: str) -> datetime:
     return dateutil.parser.parse(date)
 
 
-def _episode_duration(duration: typing.Optional[str]) -> int:
+def _episode_duration(duration: str | None) -> int:
     hours, minutes, secs = "0", "0", "0"
     if not duration:
         return -1
@@ -60,7 +59,7 @@ def _episode_duration(duration: typing.Optional[str]) -> int:
     return int(duration)
 
 
-def _episode_guid(guid: typing.Union[dict, str]) -> str:
+def _episode_guid(guid: dict | str) -> str:
     return guid["#text"] if isinstance(guid, dict) else guid
 
 

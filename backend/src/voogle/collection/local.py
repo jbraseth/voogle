@@ -7,7 +7,7 @@ filesystem.
 
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from voogle import models, storage
 
@@ -51,7 +51,7 @@ def read_local_episodes(channel: models.Channel) -> list[models.Episode]:
             guid=uri,
             description="",
             # take date from audio file metadata
-            date=datetime.fromtimestamp(ep.stat().st_ctime),
+            date=datetime.fromtimestamp(ep.stat().st_ctime, tz=timezone.utc),
             url=uri,
             episode=-1,
             season=-1,

@@ -19,7 +19,7 @@ FIX_TRANSCRIBED = """fixing episodes' transcribed field if they have
 an existing transcription file"""
 
 
-async def _maybe_create_admin():
+async def _maybe_create_admin() -> None:
     username = settings.settings.admin_username
     logger.info(f"ensuring admin {username=} is created...")
     user = await auth.get_user(username)

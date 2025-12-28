@@ -36,7 +36,7 @@ def transcribe(audio: pathlib.Path) -> Transcription:
     logger.info(f"start transcription of file {audio}")
     start_time = time.time()
     model = _get_model()
-    segments, info = model.transcribe(str(audio))
+    segments, _info = model.transcribe(str(audio))
     end_time = time.time()
     transcription = [(s.start, s.end, s.text) for s in segments]
     logger.info(f"end transcription of file {audio} in {end_time-start_time} seconds")

@@ -6,7 +6,7 @@
 
 import pathlib
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from voogle import models, storage
@@ -33,7 +33,7 @@ async def fixture_channel(aiolib) -> models.media.Channel:  # type: ignore[misc]
             channel=ch,
             title=f"test-episode-{i}",
             description=f"test episode {i}",
-            date=datetime.now(),
+            date=datetime.now(timezone.utc),
             url=f"https://example.com/episode{i}.mp3",
             guid=f"episode-{i}",
         )
@@ -62,7 +62,7 @@ async def fixture_fake_episode(
         channel=fake_channel,
         title="golf-episode",
         description="example episode",
-        date=datetime.now(),
+        date=datetime.now(timezone.utc),
         url="bar",
         guid="bar",
         transcribed=True,

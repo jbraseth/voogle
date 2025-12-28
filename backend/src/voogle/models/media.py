@@ -8,7 +8,7 @@ related episodes).
 
 """
 import enum
-from typing import Optional
+from typing import ClassVar, Optional
 
 import ormar
 
@@ -33,7 +33,7 @@ class Channel(base.CoreModel):
 
     class Meta:
         tablename = "channels"
-        constraints = [ormar.UniqueColumns("feed")]
+        constraints: ClassVar = [ormar.UniqueColumns("feed")]
 
     title = ormar.String(max_length=250)
     feed = ormar.String(max_length=250)
@@ -57,7 +57,7 @@ class Episode(base.CoreModel):
 
     class Meta:
         tablename = "episodes"
-        constraints = [ormar.UniqueColumns("url")]
+        constraints: ClassVar = [ormar.UniqueColumns("url")]
 
     channel: Optional[Channel] = ormar.ForeignKey(
         Channel,

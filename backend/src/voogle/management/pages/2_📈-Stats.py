@@ -11,7 +11,7 @@ from voogle.management import utils
 from voogle.models import analytics
 
 
-async def main():
+async def main() -> None:
     st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("📈 Stats")
     if utils.login_message(st.session_state):

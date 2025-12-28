@@ -5,6 +5,7 @@
 """Authentication related models
 
 """
+from typing import ClassVar
 
 import ormar
 
@@ -22,7 +23,7 @@ class User(CoreModel):
 
     class Meta:
         tablename = "user"
-        constraints = [
+        constraints: ClassVar = [
             ormar.UniqueColumns("email"),
             ormar.UniqueColumns("username"),
         ]

@@ -94,7 +94,7 @@ def ensure_collection(
     client: qdrant_client.QdrantClient,
     collection_name: str,
     vector_dimension: int,
-):
+) -> None:
     logger.info(f"trying to find collection {collection_name}")
     collections = client.get_collections().collections
     logger.debug(f"available collections: {collections}")

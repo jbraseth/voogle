@@ -23,7 +23,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 )
 async def _queries(
     admin: users.User = Depends(auth.get_current_admin_user),
-):
+) -> Page[analytics_schemas.QueryOut]:
     qs = analytics.Query.objects.order_by("-created_at")
     return await paginate(qs)
 
@@ -33,7 +33,7 @@ async def _queries(
     summary="Analytics about number of channels and episodes in the app",
     response_model=analytics_schemas.MediaAnalytics,
 )
-async def _media():
+async def _media() -> analytics_schemas.MediaAnalytics:
     dbchannels = await media.Channel.objects.order_by("title").all()
     channels = []
     for channel in dbchannels:

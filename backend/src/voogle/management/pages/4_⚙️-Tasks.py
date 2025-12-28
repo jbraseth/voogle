@@ -11,7 +11,7 @@ from voogle import collection, settings, tasks, utils
 from voogle.management import utils as m_utils
 
 
-async def load_default_channels():
+async def load_default_channels() -> None:
     st.header("1. Load default channel list (only once)")
     st.markdown(
         """Voogle comes with a predefined list of podcasts `RSS`
@@ -35,7 +35,7 @@ async def load_default_channels():
         st.success("Default list of channels correctly added")
 
 
-async def load_local_channels():
+async def load_local_channels() -> None:
     # st.header("1.1. Load local channels")
     # st.markdown("**Load local channels**")
     st.markdown(
@@ -47,7 +47,7 @@ async def load_local_channels():
     )
 
 
-async def update_channels():
+async def update_channels() -> None:
     st.header("2. Update channel episodes")
     st.markdown(
         """After loading channels to the system, you will need to
@@ -58,14 +58,15 @@ async def update_channels():
     st.info("This is a background task that may take some minutes.")
     if last_execution := utils.get_event("event_update_start"):
         last_execution_time = float(last_execution["time"])
-        date = datetime.datetime.fromtimestamp(last_execution_time).strftime("%c")
+        dt = datetime.datetime.fromtimestamp(last_execution_time, tz=datetime.timezone.utc)
+        date = dt.strftime("%c")
         st.markdown(f"**Last execution**: `{date}`")
     if st.button("⚙️ Update channels", use_container_width=True):
         settings.queue.enqueue(tasks.update_channels, job_timeout="1h")
         st.success("Channels started to update in the background")
 
 
-async def transcribe_pending():
+async def transcribe_pending() -> None:
     st.header("3. Transcribe episodes")
     st.markdown(
         """Trigger the **transcription process** that will take
@@ -81,7 +82,8 @@ async def transcribe_pending():
 
     if last_execution := utils.get_event("event_transcription_start"):
         last_execution_time = float(last_execution["time"])
-        date = datetime.datetime.fromtimestamp(last_execution_time).strftime("%c")
+        dt = datetime.datetime.fromtimestamp(last_execution_time, tz=datetime.timezone.utc)
+        date = dt.strftime("%c")
         st.markdown(f"**Last execution**: `{date}`: {last_execution['info']}")
 
     days = st.number_input("Number of days", min_value=1, step=1)
@@ -90,7 +92,7 @@ async def transcribe_pending():
         st.success(f"Started transcription of {total} episodes in a background process")
 
 
-async def store_pending():
+async def store_pending() -> None:
     st.header("4. Index episodes")
     st.markdown(
         """Trigger the process that will index all finished
@@ -102,14 +104,15 @@ async def store_pending():
     )
     if last_execution := utils.get_event("event_store_start"):
         last_execution_time = float(last_execution["time"])
-        date = datetime.datetime.fromtimestamp(last_execution_time).strftime("%c")
+        dt = datetime.datetime.fromtimestamp(last_execution_time, tz=datetime.timezone.utc)
+        date = dt.strftime("%c")
         st.markdown(f"**Last execution**: `{date}`: {last_execution['info']}")
     if st.button("💾 Start indexing process", use_container_width=True):
         settings.queue.enqueue(tasks.store_episodes_embeddings, job_timeout="20h")
         st.success("Started indexing in a background process")
 
 
-async def main():
+async def main() -> None:
     st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("⚙️ Tasks")
     if m_utils.login_message(st.session_state):
