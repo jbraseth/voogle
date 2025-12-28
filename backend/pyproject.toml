@@ -25,10 +25,6 @@ select = [
     "DTZ",  # flake8-datetimez
     "RUF",  # Ruff-specific rules
 ]
-ignore = [
-    "ANN101",  # Missing type annotation for self
-    "ANN102",  # Missing type annotation for cls
-]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
