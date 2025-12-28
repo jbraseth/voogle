@@ -13,16 +13,19 @@ pytestmark = pytest.mark.integration
 
 @pytest.mark.skip(reason="not reliable between different versions")
 @pytest.mark.description("Tests audio transcription with Whisper, CSV storage, and retrieval")
-def test_audio_transcription(tests_data_dir: pathlib.Path, jobs_transcription: transcription.Transcription) -> None:
-    audio = tests_data_dir / "jobs.mp3"
-    tr = transcription.transcribe(audio)
+def test_audio_transcription(
+    jobs_mp3_path: pathlib.Path,
+    jobs_csv_path: pathlib.Path,
+    jobs_transcription: transcription.Transcription,
+) -> None:
+    tr = transcription.transcribe(jobs_mp3_path)
     assert len(tr) > 0
     assert len(tr[0]) == 3
     assert tr[0][0] == 0.0
     assert isinstance(tr[0][1], float)
     assert isinstance(tr[0][2], str)
-    transcription.store_transcription(tr, tests_data_dir / "jobs.csv")
-    read = transcription.read_transcription(tests_data_dir / "jobs.csv")
+    transcription.store_transcription(tr, jobs_csv_path)
+    read = transcription.read_transcription(jobs_csv_path)
 
     original_text = "".join([r[2] for r in jobs_transcription])
     current_text = "".join([r[2] for r in read])
