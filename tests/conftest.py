@@ -6,18 +6,19 @@ import os
 import pathlib
 import shutil
 from datetime import datetime
+from typing import Any, Generator
 
 import pytest
 import sqlalchemy
 from starlette.testclient import TestClient
-from voogle import auth, collection, db, main, models, storage, transcription
+from voogle import auth, db, main, models, storage, transcription
 from voogle.settings import settings
 
 EXAMPLE_CHANNEL_FEED = "https://feeds.simplecast.com/5dXzywz5"
 
 
-@pytest.fixture(autouse=True, scope="function")
-def create_test_database():  # type: ignore
+@pytest.fixture(autouse=True, name="create_test_database")
+def fixture_create_test_database() -> Generator[None, Any, Any]:
     """Automatically create the test database and remove it at the
     end.
     """
@@ -31,13 +32,13 @@ def create_test_database():  # type: ignore
     db.metadata.drop_all(engine)
 
 
-@pytest.fixture
-def client() -> TestClient:
+@pytest.fixture(name="client")
+def fixture_client() -> TestClient:
     return TestClient(main.app)
 
 
-@pytest.fixture
-async def auth_client() -> TestClient:  # type: ignore
+@pytest.fixture(name="auth_client")
+async def fixture_auth_client() -> TestClient:  # type: ignore
     client = TestClient(main.app)
     await models.users.User.objects.create(
         email="test@acme.com",
@@ -54,20 +55,40 @@ async def auth_client() -> TestClient:  # type: ignore
     return TestClient(main.app, headers={"Authorization": f"Bearer {token}"})
 
 
-@pytest.fixture
-async def channel(aiolib) -> models.media.Channel:  # type: ignore
-    _, channel = await collection.get_or_create_channel(EXAMPLE_CHANNEL_FEED)
-    await collection.update_channel(channel, 5)
-    return channel
+@pytest.fixture(name="channel")
+async def fixture_channel(aiolib) -> models.media.Channel:  # type: ignore
+    # Don't fetch real RSS feed in tests - create mock channel instead
+    ch = await models.Channel.objects.create(
+        kind=models.media.ChannelKind.podcast.value,
+        title="test-channel",
+        description="test podcast channel",
+        language="en",
+        url="https://example.com/podcast",
+        feed=EXAMPLE_CHANNEL_FEED,
+        image="https://example.com/image.jpg",
+        local_folder="test-channel",
+    )
+    # Create 5 mock episodes for tests that need them
+    for i in range(5):
+        await models.Episode.objects.create(
+            channel=ch,
+            title=f"test-episode-{i}",
+            description=f"test episode {i}",
+            date=datetime.now(),
+            url=f"https://example.com/episode{i}.mp3",
+            guid=f"episode-{i}",
+        )
+    return ch
 
 
-@pytest.fixture
-def tests_data_dir() -> pathlib.Path:
-    return settings.code_dir / "tests" / "data"
+@pytest.fixture(name="tests_data_dir")
+def fixture_tests_data_dir() -> pathlib.Path:
+    # Use relative path that works locally and in Docker
+    return pathlib.Path("tests/data")
 
 
-@pytest.fixture
-def jobs_transcription() -> transcription.Transcription:
+@pytest.fixture(name="jobs_transcription")
+def fixture_jobs_transcription() -> transcription.Transcription:
     return [
         (0.0, 3.2, " It was their farewell message as they signed off."),
         (3.2, 6.26, " Stay hungry, stay foolish."),
@@ -78,8 +99,8 @@ def jobs_transcription() -> transcription.Transcription:
     ]
 
 
-@pytest.fixture
-async def fake_channel() -> models.Channel:
+@pytest.fixture(name="fake_channel")
+async def fixture_fake_channel() -> models.Channel:
     return await models.Channel.objects.create(
         kind=models.media.ChannelKind.podcast.value,
         title="golf-channel",
@@ -92,8 +113,8 @@ async def fake_channel() -> models.Channel:
     )
 
 
-@pytest.fixture
-async def fake_episode(aiolib, fake_channel, tests_data_dir) -> models.media.Episode:
+@pytest.fixture(name="fake_episode")
+async def fixture_fake_episode(aiolib, fake_channel, tests_data_dir) -> models.media.Episode:
     episode = await models.media.Episode.objects.create(
         channel=fake_channel,
         title="golf-episode",
@@ -112,8 +133,8 @@ async def fake_episode(aiolib, fake_channel, tests_data_dir) -> models.media.Epi
     return episode
 
 
-@pytest.fixture(autouse=True, scope="session")
-def clean_environment():
+@pytest.fixture(autouse=True, scope="session", name="clean_environment")
+def fixture_clean_environment():
     yield
     data = settings.data_dir
     if "test" in str(data):
