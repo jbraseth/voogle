@@ -3,4 +3,7 @@
 # All rights reserved.
 
 
-from . import analytics, app, media, users
+from . import analytics as analytics
+from . import app as app
+from . import media as media
+from . import users as users

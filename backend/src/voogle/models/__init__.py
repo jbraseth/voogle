@@ -6,6 +6,8 @@
 
 """
 
-from .analytics import Query
-from .media import Channel, ChannelKind, Episode
-from .users import User
+from .analytics import Query as Query
+from .media import Channel as Channel
+from .media import ChannelKind as ChannelKind
+from .media import Episode as Episode
+from .users import User as User
