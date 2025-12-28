@@ -15,6 +15,7 @@ def test_default_channels() -> None:
     assert len(channels) > 0
     for ch in channels[-5:]:
         channel = collection.read_channel(ch["url"])
+        assert channel is not None
         episodes = collection.read_episodes(channel)
         assert len(episodes) > 0
 
@@ -24,9 +25,11 @@ async def test_read_channel_and_its_episodes() -> None:
     for i, podcast in enumerate(collection.default_channels()[:5]):
         created, retrieved = await collection.get_or_create_channel(podcast["url"])
         assert created
+        assert retrieved is not None
         assert retrieved.kind == "podcast"
         created, retrieved = await collection.get_or_create_channel(podcast["url"])
         assert not created
+        assert retrieved is not None
         for f in [
             retrieved.title,
             retrieved.description,
@@ -34,7 +37,7 @@ async def test_read_channel_and_its_episodes() -> None:
             retrieved.feed,
             retrieved.image,
         ]:
-            assert len(f) > 0
+            assert len(str(f)) > 0
         if i == 0:
             assert (await collection.update_channel(retrieved)) > 0
             assert (await collection.update_channel(retrieved)) == 0

@@ -37,13 +37,15 @@ async def _media():
     channels = []
     for channel in dbchannels:
         eps = channel.episodes
+        # Extract string values from enum fields and cast BaseField to str
+        kind_str = str(channel.kind) if channel.kind else ""
         channels.append(
             analytics_schemas.ChannelAnalytics(
-                title=channel.title,
-                kind=channel.kind,  # type: ignore
-                description=channel.description,  # type: ignore
-                image=channel.image,
-                url=channel.url,
+                title=str(channel.title),
+                kind=kind_str,
+                description=str(channel.description),
+                image=str(channel.image),
+                url=str(channel.url),
                 total_episodes=await eps.count(),
                 available_episodes=await eps.filter(embeddings=True).count(),
             )

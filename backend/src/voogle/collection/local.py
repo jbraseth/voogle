@@ -40,7 +40,7 @@ def read_local_episodes(channel: models.Channel) -> list[models.Episode]:
 
     """
     logger.info(f"reading local episodes from channel: {channel.id}: {channel.title}")
-    channel_folder = storage.LOCAL_CHANNELS_PATH / channel.local_folder
+    channel_folder = storage.LOCAL_CHANNELS_PATH / str(channel.local_folder)
     mp3_files = list(channel_folder.glob("*.mp3"))
     wav_files = list(channel_folder.glob("*.wav"))
     episodes: list[models.Episode] = []

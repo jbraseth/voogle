@@ -85,7 +85,7 @@ async def transcribe_pending():
 
     days = st.number_input("Number of days", min_value=1, step=1)
     if st.button("🎧 Start transcription process", use_container_width=True):
-        total = await tasks.transcribe_episodes(days)  # type: ignore
+        total = await tasks.transcribe_episodes(days)
         st.success(f"Started transcription of {total} episodes in a background process")
 
 

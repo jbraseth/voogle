@@ -12,11 +12,11 @@ from __future__ import annotations
 
 import logging
 import typing
-import xml
+import xml.parsers.expat
 from datetime import datetime
 
 import dateutil.parser
-import requests  # type: ignore
+import requests
 import xmltodict
 
 from voogle import models
@@ -98,7 +98,9 @@ def read_episodes(channel: models.Channel) -> list[models.Episode]:
     a given channel.
     """
     logger.info(f"reading episodes from channel: {channel.id}: {channel.title}")
-    feed = _read_channel_feed(channel.feed)
+    feed = _read_channel_feed(str(channel.feed))
+    if feed is None:
+        return []
     episodes: list[models.Episode] = []
     for ep in feed["rss"]["channel"]["item"]:
         if ep.get("itunes:episodeType", None) not in ["bonus", "trailer"]:

@@ -20,7 +20,7 @@ class User(CoreModel):
 
     """
 
-    class Meta(ormar.ModelMeta):
+    class Meta:
         tablename = "user"
         constraints = [
             ormar.UniqueColumns("email"),
@@ -29,5 +29,5 @@ class User(CoreModel):
 
     email = ormar.String(max_length=400)
     username = ormar.String(max_length=40)
-    hashed_password: str = ormar.String(max_length=65)  # type: ignore
-    admin: bool = ormar.Boolean(default=False)
+    hashed_password = ormar.String(max_length=65)
+    admin = ormar.Boolean(default=False)

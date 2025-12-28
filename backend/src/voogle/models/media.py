@@ -30,18 +30,18 @@ class Channel(base.CoreModel):
     The field feed (that contains the feed url) is unique.
     """
 
-    class Meta(ormar.ModelMeta):
+    class Meta:
         tablename = "channels"
         constraints = [ormar.UniqueColumns("feed")]
 
-    title: str = ormar.String(max_length=250)  # type: ignore
-    feed: str = ormar.String(max_length=250)  # type: ignore
+    title = ormar.String(max_length=250)
+    feed = ormar.String(max_length=250)
     kind = ormar.String(max_length=10, choices=list(ChannelKind))
     language = ormar.String(max_length=3, choices=list(Language))
     description = ormar.Text()
-    url: str = ormar.String(max_length=250)  # type: ignore
-    local_folder: str = ormar.String(max_length=250)  # type: ignore
-    image: str = ormar.String(max_length=500)  # type: ignore
+    url = ormar.String(max_length=250)
+    local_folder = ormar.String(max_length=250)
+    image = ormar.String(max_length=500)
 
 
 class Episode(base.CoreModel):
@@ -54,7 +54,7 @@ class Episode(base.CoreModel):
     The field fieield is unique.
     """
 
-    class Meta(ormar.ModelMeta):
+    class Meta:
         tablename = "episodes"
         constraints = [ormar.UniqueColumns("url")]
 
@@ -63,11 +63,11 @@ class Episode(base.CoreModel):
         related_name="episodes",
         ondelete=ormar.ReferentialAction.CASCADE,
     )
-    title: str = ormar.String(max_length=250)  # type: ignore
-    description: str = ormar.Text()  # type: ignore
+    title = ormar.String(max_length=250)
+    description = ormar.Text()
     date = ormar.DateTime(timezone=True, nullable=True)
     guid = ormar.Text()  # episode guid at origin
-    url: str = ormar.Text()  # type: ignore
+    url = ormar.Text()
     episode = ormar.Integer(default=-1)
     season = ormar.Integer(default=-1)
     duration = ormar.Integer(default=-1)

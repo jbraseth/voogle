@@ -7,8 +7,8 @@
 """
 import logging
 
-import redis  # type: ignore
-from rq import Worker  # type: ignore
+import redis
+from rq import Worker
 
 from voogle import settings
 

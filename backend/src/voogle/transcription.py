@@ -69,7 +69,7 @@ async def transcribe_episode(episode: media.Episode) -> pathlib.Path:
     the path of the generated transcription file.
 
     """
-    title = episode.title
+    title = str(episode.title)
     logger.info(f"transcription of episode {title}: {episode.pk}")
     utils.log_event("event_transcription_start", title)
     trfile = await storage.transcription_file(episode)

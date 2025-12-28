@@ -62,7 +62,7 @@ async def authenticate_user(username: str, password: str) -> Optional[models.Use
 
     """
     user = await get_user(username)
-    if user and _verify_password(password, user.hashed_password):
+    if user and _verify_password(password, str(user.hashed_password)):
         return user
     return None
 

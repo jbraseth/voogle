@@ -24,7 +24,7 @@ class CoreModel(ormar.Model):
     """
 
     pk = ormar.Integer(primary_key=True)
-    id: uuid.UUID = ormar.UUID(default=uuid.uuid4, uuid_format="string")  # type: ignore
+    id = ormar.UUID(default=uuid.uuid4, uuid_format="string")
     created_at = ormar.DateTime(default=datetime.now, timezone=True)
 
     class Meta:

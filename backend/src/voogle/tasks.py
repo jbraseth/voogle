@@ -12,7 +12,7 @@ from typing import Optional
 
 import qdrant_client
 import sentence_transformers
-from qdrant_client.models import Filter
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from voogle import collection, embedding, models, settings, transcription, utils, vector
 
@@ -76,7 +76,7 @@ async def store_episode_embeddings(
     """Obtain embeddings for a given episode and store them in the
     vector database.
     """
-    title = episode.title
+    title = str(episode.title)
     logger.info(f"storing embeddings for episode {title}: {episode.pk}")
     utils.log_event("event_store_start", title)
     try:
@@ -139,7 +139,12 @@ def search(
     query_filter = None
     if channel:
         query_filter = Filter(
-            **{"must": [{"key": "channel", "match": {"value": channel}}]}
+            must=[
+                FieldCondition(
+                    key="channel",
+                    match=MatchValue(value=channel),
+                )
+            ]
         )
 
     return vector.search(

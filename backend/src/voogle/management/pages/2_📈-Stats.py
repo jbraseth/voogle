@@ -20,8 +20,11 @@ async def main():
             qs = await analytics.Query.objects.order_by("-created_at").limit(20).all()
             markdown_queries = ""
             for query in qs:
-                date = query.created_at.strftime("%Y-%m-%d, %H:%M:%S")  # type: ignore
-                markdown_queries += f"\n - `{date}` {query.text}"
+                # created_at is a datetime object from the model
+                created_at = query.created_at
+                if created_at:
+                    date = created_at.strftime("%Y-%m-%d, %H:%M:%S")  # type: ignore[attr-defined]
+                    markdown_queries += f"\n - `{date}` {query.text}"
             if len(qs) == 0:
                 st.write("⚠️ No queries yet!")
             st.markdown(markdown_queries)

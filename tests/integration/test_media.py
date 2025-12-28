@@ -31,7 +31,7 @@ async def test_crud_channels(channel: models.media.Channel, auth_client: TestCli
     assert response["items"][0]["title"]
     assert response["items"][0]["image"]
     # filter channels by title
-    title = channel.title
+    title = str(channel.title)
     response = auth_client.get(
         f"/media/channel?title__icontains={title[:10]}"
     ).json()

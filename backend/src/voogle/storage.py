@@ -10,7 +10,7 @@ import logging
 import pathlib
 import shutil
 
-import requests  # type: ignore
+import requests
 
 from voogle import settings, storage
 from voogle.models import media
@@ -37,7 +37,7 @@ def vectordb_path() -> pathlib.Path:
 
 def channel_path(channel: media.Channel) -> pathlib.Path:
     """Return the path where channel media files should be stored."""
-    fname = f"{slugify(channel.title[:30])}-{slugify(channel.feed[-10:])}"
+    fname = f"{slugify(str(channel.title)[:30])}-{slugify(str(channel.feed)[-10:])}"
     return settings.settings.media_folder / fname
 
 
@@ -45,10 +45,13 @@ async def episode_file(
     episode: media.Episode, create_channel_folder: bool = False
 ) -> pathlib.Path:
     """Return path where episode should be stored."""
-    path = channel_path(await episode.channel.load())  # type: ignore
+    if episode.channel is None:
+        raise ValueError(f"Episode {episode.pk} has no associated channel")
+    channel = await episode.channel.load()
+    path = channel_path(channel)
     if create_channel_folder and not path.exists():
         path.mkdir(parents=True)
-    fname = f"{slugify(episode.title[:30])}-{slugify(episode.url[-10:])}"
+    fname = f"{slugify(str(episode.title)[:30])}-{slugify(str(episode.url)[-10:])}"
     return (path / fname).with_suffix(f".{DEFAULT_EPISODES_SUFFIX}")
 
 
@@ -79,14 +82,16 @@ async def download_episode(episode: media.Episode) -> pathlib.Path:
 
     """
     logger.info(f"checking if we need to download episode {episode.id}")
-    channel = await episode.channel.load()  # type: ignore
+    if episode.channel is None:
+        raise ValueError(f"Episode {episode.pk} has no associated channel")
+    channel = await episode.channel.load()
     audio = await episode_file(episode, create_channel_folder=True)
     if audio.exists():
         return audio
     if not audio.exists():
-        if channel.local_folder != "":  # channel from local folder:
-            local_file = storage.LOCAL_CHANNELS_PATH / episode.url
+        if str(channel.local_folder) != "":  # channel from local folder:
+            local_file = storage.LOCAL_CHANNELS_PATH / str(episode.url)
             shutil.copy(local_file, audio)
         else:  # channel from rss feed
-            await fetch_file(episode.url, audio)
+            await fetch_file(str(episode.url), audio)
     return audio

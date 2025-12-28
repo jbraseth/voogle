@@ -83,7 +83,7 @@ def create_collection(
     client.recreate_collection(
         collection_name=name,
         vectors_config=models.VectorParams(
-            size=vector_dimension,  # type: ignore
+            size=vector_dimension,  # type: ignore[arg-type]
             distance=models.Distance.COSINE,
         ),
     )
@@ -107,9 +107,11 @@ def ensure_collection(
 
 def _gen_metadata(fragment: embedding.Fragment, episode: Episode) -> dict:
     # additional metadata we store in the vector database for each fragment
+    if episode.channel is None:
+        raise ValueError(f"Episode {episode.pk} has no associated channel")
     return {
         "episode": episode.pk,
-        "channel": episode.channel.pk,  # type: ignore
+        "channel": episode.channel.pk,
         "start_secs": fragment.start_secs,
         "end_secs": fragment.end_secs,
         "text": fragment.text,
@@ -129,10 +131,10 @@ async def add_episode(
     """
     if episode.embeddings:
         raise ValueError(f"Episode {episode.pk} already stored in the vector db")
-    client.upload_records(
+    client.upload_points(
         collection_name=collection_name,
-        records=[
-            models.Record(
+        points=[
+            models.PointStruct(
                 id=str(uuid.uuid4()),
                 vector=emb.tolist(),
                 payload=_gen_metadata(fragment, episode),
@@ -153,10 +155,10 @@ def search(
     query_filter: Optional[models.Filter] = None,
 ) -> list[QueryResponse]:
     """Perform a query with the given vector database and embeddings."""
-    results = client.search(
+    results = client.query_points(
         collection_name=collection_name,
-        query_vector=query_embedding[0].tolist(),
+        query=query_embedding[0].tolist(),
         query_filter=query_filter,
         limit=num_results,
     )
-    return [QueryResponse(score=r.score, **r.payload) for r in results]  # type: ignore
+    return [QueryResponse(score=r.score, **r.payload) for r in results.points]  # type: ignore[arg-type,call-arg]
