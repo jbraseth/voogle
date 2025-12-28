@@ -14,7 +14,7 @@ from voogle.models import analytics
 async def main() -> None:
     st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("📈 Stats")
-    if utils.login_message(st.session_state):
+    if utils.login_message(st.session_state):  # type: ignore[arg-type]
         tab_last, tab_graphs = st.tabs(["Last queries", "Queries per day"])
         with tab_last:
             st.write("Last 20 queries performed by Voogle users")

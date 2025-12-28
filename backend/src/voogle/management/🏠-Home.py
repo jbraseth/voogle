@@ -9,7 +9,7 @@ from voogle.management import utils
 
 st.set_page_config(page_title="Voogle", page_icon="🎧")
 st.title("🎧 Voogle Management Dashboard")
-authenticated = utils.login_message(st.session_state)
+authenticated = utils.login_message(st.session_state)  # type: ignore[arg-type]
 
 st.markdown(
     f"""**Management tools for Voogle deployments.**

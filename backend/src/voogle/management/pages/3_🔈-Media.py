@@ -102,7 +102,7 @@ async def podcasts_and_episodes() -> None:
 async def main() -> None:
     st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("📻 Media")
-    if m_utils.login_message(st.session_state):
+    if m_utils.login_message(st.session_state):  # type: ignore[arg-type]
         await add_channel()
         st.divider()
         await add_local_channel()

@@ -27,7 +27,7 @@ def upgrade() -> None:
     op.create_table(
         "queries",
         sa.Column("pk", sa.Integer(), nullable=False),
-        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),
+        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),  # type: ignore[attr-defined]
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("text", sa.String(length=150), nullable=False),
         sa.PrimaryKeyConstraint("pk"),

@@ -23,7 +23,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 )
 async def _queries(
     admin: users.User = Depends(auth.get_current_admin_user),
-) -> Page[analytics_schemas.QueryOut]:
+) -> Page[analytics_schemas.QueryOut]:  # type: ignore[valid-type]
     qs = analytics.Query.objects.order_by("-created_at")
     return await paginate(qs)
 

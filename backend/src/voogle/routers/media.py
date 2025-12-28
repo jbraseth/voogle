@@ -35,7 +35,7 @@ async def channels(
     pk: Optional[int] = None,
     title__icontains: Optional[str] = None,
     description__icontains: Optional[str] = None,
-) -> Page[media_schemas.ChannelOut]:
+) -> Page[media_schemas.ChannelOut]:  # type: ignore[valid-type]
     qs = media.Channel.objects
     if pk:
         qs = qs.filter(pk=pk)
@@ -54,7 +54,7 @@ async def channels(
 async def get_channel(
     channel_id: uuid.UUID,
     admin: users.User = fastapi.Depends(auth.get_current_admin_user),
-) -> media_schemas.ChannelOut:
+) -> media_schemas.ChannelOut:  # type: ignore[valid-type]
     channel = await media.Channel.objects.get(id=channel_id)
     return channel
 
@@ -67,7 +67,7 @@ async def get_channel(
 async def add_channel(
     channel_in: media_schemas.ChannelIn = fastapi.Body(...),
     admin: users.User = fastapi.Depends(auth.get_current_admin_user),
-) -> media_schemas.ChannelOut:
+) -> media_schemas.ChannelOut:  # type: ignore[valid-type]
     _, channel = await crawler.get_or_create_channel(channel_in.feed_url)
     return channel
 
@@ -94,7 +94,7 @@ async def episodes(
     title__icontains: Optional[str] = None,
     description__icontains: Optional[str] = None,
     admin: users.User = fastapi.Depends(auth.get_current_admin_user),
-) -> Page[media_schemas.EpisodeOut]:
+) -> Page[media_schemas.EpisodeOut]:  # type: ignore[valid-type]
     """Return a list with all the available episodes."""
     qs = media.Episode.objects
     if pk:

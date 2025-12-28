@@ -115,7 +115,7 @@ async def store_pending() -> None:
 async def main() -> None:
     st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("⚙️ Tasks")
-    if m_utils.login_message(st.session_state):
+    if m_utils.login_message(st.session_state):  # type: ignore[arg-type]
         st.markdown(
             """ This page contains all the **management tasks** to
         handle your Voogle instance. Some of them will run

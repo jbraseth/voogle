@@ -28,7 +28,7 @@ def upgrade() -> None:
     op.create_table(
         "channels",
         sa.Column("pk", sa.Integer(), nullable=False),
-        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),
+        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),  # type: ignore[attr-defined]
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("title", sa.String(length=250), nullable=False),
         sa.Column("feed", sa.String(length=250), nullable=False),
@@ -43,7 +43,7 @@ def upgrade() -> None:
     op.create_table(
         "user",
         sa.Column("pk", sa.Integer(), nullable=False),
-        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),
+        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),  # type: ignore[attr-defined]
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("email", sa.String(length=400), nullable=False),
         sa.Column("username", sa.String(length=40), nullable=False),
@@ -56,7 +56,7 @@ def upgrade() -> None:
     op.create_table(
         "episodes",
         sa.Column("pk", sa.Integer(), nullable=False),
-        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),
+        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),  # type: ignore[attr-defined]
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("channel", sa.Integer(), nullable=True),
         sa.Column("title", sa.String(length=250), nullable=False),
