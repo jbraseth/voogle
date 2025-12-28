@@ -1,6 +1,6 @@
-# 🎧 Voilib Deployment
+# 🎧 Voogle Deployment
 This folder contains all the infrastructure code needed to run
-**Voilib**.  It uses some Docker-based services configured with a
+**Voogle**.  It uses some Docker-based services configured with a
 `Docker Compose` file (different in development and in production).
 
 > The main commands to build and run all the needed services are in
@@ -46,24 +46,24 @@ compose build`) and run all of them with `make dev-run` (it performs a
 
 - When you do it, ensure to use your own domain in `VITE_API_HOST`.
 Replace it also in the following lines from the `compose.yml` file
-(you can search and replace `voilib.com` in the file):
+(you can search and replace `voogle.com` in the file):
 
 ```yaml
-- "traefik.http.routers.ui.rule=(Host(`voilib.com`) && PathPrefix(`/`))"
+- "traefik.http.routers.ui.rule=(Host(`voogle.com`) && PathPrefix(`/`))"
 ```
 
  ```yaml
- - "traefik.http.routers.api.rule=(Host(`voilib.com`) && PathPrefix(`/service`))"
+ - "traefik.http.routers.api.rule=(Host(`voogle.com`) && PathPrefix(`/service`))"
  ```
 
  ...and
 
 
 ```yaml
-- "traefik.http.routers.management.rule=(Host(`voilib.com`) && PathPrefix(`/management`))"
+- "traefik.http.routers.management.rule=(Host(`voogle.com`) && PathPrefix(`/management`))"
 ```
 
--  There are also some references to `voilib.com` in
+-  There are also some references to `voogle.com` in
  [traefik.prod.toml](./production/traefik.prod.toml) that you should
  replace with your own domain.
 
@@ -83,10 +83,10 @@ following tasks.
 
 ###  💾 Running database migrations
 
-> ℹ️ In Docker-based installations, Voilib will run migrations
+> ℹ️ In Docker-based installations, Voogle will run migrations
 > automatically from a Docker entrypoint. You can skip this step.
 
-Voilib uses `sqlite` to store some information about podcasts and
+Voogle uses `sqlite` to store some information about podcasts and
 episodes. To ensure the database file with all the needed tables is
 created you should run the following command from [infra/ folder](./):
 
@@ -103,7 +103,7 @@ cd production && docker compose exec backend alembic upgrade head
 
 ###  👤 Creating and admin user
 
-> ℹ️ In Docker-based installations, Voilib will create automatically
+> ℹ️ In Docker-based installations, Voogle will create automatically
 > the admin user. By default, username will be `voogle-admin` and
 > password `*audio*search*engine`, although they can be configured
 > with environment variables. So, you can skip this step.
@@ -123,11 +123,11 @@ can check all the available endpoint with `Swagger`.
 
 ###  🎧 Adding podcasts metadata
 
-> ℹ️ This can be also done from **Voilib Management Dashboard**.
-> From there, you can also add your own audio files to Voilib.
+> ℹ️ This can be also done from **Voogle Management Dashboard**.
+> From there, you can also add your own audio files to Voogle.
 
-The file [urls.json](../backend/src/voilib/collection/urls.json)
-contains the list of podcast that Voilib will collect. By default it
+The file [urls.json](../backend/src/voogle/collection/urls.json)
+contains the list of podcast that Voogle will collect. By default it
 contains some examples of popular podcast. You can change this list
 and add the feeds from all the podcasts you want. I usually use
 [listennotes.com](https://www.listennotes.com) to find the URLs of the
@@ -149,7 +149,7 @@ cd production && docker compose exec worker voogle-episodes --update
 
 ### 🕒 Configuring periodic collect/transcript/index jobs
 
-> ℹ️ You can easily run these tasks from  **Voilib Management Dashboard**.
+> ℹ️ You can easily run these tasks from  **Voogle Management Dashboard**.
 
 You can use `cron` to configure **periodic jobs** that will
 **collect**, **transcript** and **index** new episodes. Here you have
@@ -158,13 +158,13 @@ my development configuration (assuming you work in Linux, run `crontab
 
 ```bash
 # update list of episodes every 6 hours
-0 */6 * * * cd /{change-me}/voilib/infra/development && docker compose exec worker voogle-episodes --update
+0 */6 * * * cd /{change-me}/voogle/infra/development && docker compose exec worker voogle-episodes --update
 
 # transcribe last day episodes every 12 hours
-20 */12 * * * cd /{change-me}/accushoot/voilib/infra/development && docker compose exec worker voogle-episodes --transcribe-days 1
+20 */12 * * * cd /{change-me}/accushoot/voogle/infra/development && docker compose exec worker voogle-episodes --transcribe-days 1
 
 # index pending episodes every 6 hours
-40 */6 * * * cd /{change-me}/voilib/infra/development && docker compose exec worker voogle-episodes --store
+40 */6 * * * cd /{change-me}/voogle/infra/development && docker compose exec worker voogle-episodes --store
 
 ```
 
@@ -173,14 +173,14 @@ my development configuration (assuming you work in Linux, run `crontab
 
 ```bash
 # update list of episodes every 6 hours
-0 */6 * * * cd /{change-me}/voilib/infra/production && docker compose exec worker voogle-episodes --update
+0 */6 * * * cd /{change-me}/voogle/infra/production && docker compose exec worker voogle-episodes --update
 
 # transcribe last day episodes every 12 hours
-20 */12 * * * cd /{change-me}/accushoot/voilib/infra/production && docker compose exec worker voogle-episodes --transcribe-days 1
+20 */12 * * * cd /{change-me}/accushoot/voogle/infra/production && docker compose exec worker voogle-episodes --transcribe-days 1
 
 # index pending episodes every 6 hours
-40 */6 * * * cd /{change-me}/voilib/infra/production && docker compose exec worker voogle-episodes --store
+40 */6 * * * cd /{change-me}/voogle/infra/production && docker compose exec worker voogle-episodes --store
 ```
 
 Don't forget to change all `/{change-me}` to the actual path that
-contains the Voilib repository.
+contains the Voogle repository.

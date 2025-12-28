@@ -126,7 +126,7 @@ cd backend
 pytest                                    # Run all tests
 pytest tests/test_specific.py            # Run specific test file
 pytest -v -s                              # Verbose output with prints
-pytest --cov=src/voilib --cov-report=html # With coverage
+pytest --cov=src/voogle --cov-report=html # With coverage
 
 # Linting
 ruff check .                              # Check for issues
@@ -148,7 +148,7 @@ cp .env.example .env
 # Edit .env: set SECRET_KEY, ADMIN_PASSWORD, domain
 
 # Update domain references in compose.yml
-# Replace all instances of voilib.com with your domain
+# Replace all instances of voogle.com with your domain
 
 # Build and run
 cd infra && make prod-build
@@ -244,7 +244,7 @@ cp infra/production/.env.example infra/production/.env
 See [docs/plan.md](docs/plan.md) for active tasks and planning.
 See [CHANGELOG.md](CHANGELOG.md) for recent changes and reasoning.
 
-**Current Focus**: Renaming project from Voilib to Voogle (see GitHub issue #1)
+**Current Focus**: Renaming project from Voogle to Voogle (see GitHub issue #1)
 
 ## Critical Patterns
 
@@ -254,10 +254,10 @@ See [CHANGELOG.md](CHANGELOG.md) for recent changes and reasoning.
 - **Trust internal code**: No redundant validation between internal modules
 
 ### Code Organization
-- Settings centralized in `backend/src/voilib/settings.py` (loaded from env vars)
+- Settings centralized in `backend/src/voogle/settings.py` (loaded from env vars)
 - Async workers handle long-running tasks (transcription, embeddings) via RQ
-- Vector operations isolated in `backend/src/voilib/vector.py`
-- Embedding logic in `backend/src/voilib/embedding.py`
+- Vector operations isolated in `backend/src/voogle/vector.py`
+- Embedding logic in `backend/src/voogle/embedding.py`
 
 ### Data Flow
 1. RSS feeds → Collection scripts → SQLite metadata
@@ -286,7 +286,7 @@ See [CHANGELOG.md](CHANGELOG.md) for recent changes and reasoning.
 ```
 voogle/
 ├── backend/                      # Python FastAPI backend
-│   ├── src/voilib/              # Main application code (to be renamed to voogle)
+│   ├── src/voogle/              # Main application code (to be renamed to voogle)
 │   ├── migrations/              # Alembic database migrations
 │   ├── dockerfile               # Production Dockerfile
 │   ├── requirements.txt         # Python dependencies

@@ -1,5 +1,5 @@
-# Voilib - frontend documentation
-Frontend of **Voilib**, based on [SvelteJS](https://svelte.dev/).
+# Voogle - frontend documentation
+Frontend of **Voogle**, based on [SvelteJS](https://svelte.dev/).
 
 This project uses [SvelteJS](https://svelte.dev/) with
 [Vite](https://vitejs.dev/) as the build tool. As client-side router,

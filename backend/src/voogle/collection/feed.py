@@ -1,4 +1,5 @@
 # Copyright (c) 2022-2024 Pablo González Carrizo (unmonoqueteclea)
+# Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
 """Utilities to parse podcasts RSS feeds
