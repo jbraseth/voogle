@@ -131,10 +131,10 @@ async def add_episode(
     """
     if episode.embeddings:
         raise ValueError(f"Episode {episode.pk} already stored in the vector db")
-    client.upload_points(
+    client.upload_records(  # type: ignore[attr-defined]
         collection_name=collection_name,
-        points=[
-            models.PointStruct(
+        records=[
+            models.Record(
                 id=str(uuid.uuid4()),
                 vector=emb.tolist(),
                 payload=_gen_metadata(fragment, episode),
@@ -155,10 +155,10 @@ def search(
     query_filter: Optional[models.Filter] = None,
 ) -> list[QueryResponse]:
     """Perform a query with the given vector database and embeddings."""
-    results = client.query_points(
+    results = client.search(  # type: ignore[attr-defined]
         collection_name=collection_name,
-        query=query_embedding[0].tolist(),
+        query_vector=query_embedding[0].tolist(),
         query_filter=query_filter,
         limit=num_results,
     )
-    return [QueryResponse(score=r.score, **r.payload) for r in results.points]  # type: ignore[arg-type,call-arg]
+    return [QueryResponse(score=r.score, **r.payload) for r in results]  # type: ignore[arg-type,call-arg]

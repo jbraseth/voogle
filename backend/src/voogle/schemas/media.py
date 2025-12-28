@@ -9,7 +9,6 @@ from typing import Optional
 
 from pydantic import BaseModel
 from voogle import transcription
-from voogle.models.base import CoreModel
 from voogle.models.media import Channel, Episode
 
 ChannelOut = Channel.get_pydantic(exclude={"pk", "episodes"})
@@ -21,7 +20,7 @@ class ChannelIn(BaseModel):
     feed_url: str
 
 
-EpisodeIn = Episode.get_pydantic(exclude=set(CoreModel.model_fields.keys()))
+EpisodeIn = Episode.get_pydantic(exclude={"pk", "id", "created_at"})
 EpisodeOut = Episode.get_pydantic(exclude={"pk", "channel"})
 
 
