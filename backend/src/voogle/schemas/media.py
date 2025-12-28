@@ -8,6 +8,7 @@
 from typing import Optional
 
 from pydantic import BaseModel
+
 from voogle import transcription
 from voogle.models.media import Channel, Episode
 

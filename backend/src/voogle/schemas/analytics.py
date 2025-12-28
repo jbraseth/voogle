@@ -6,6 +6,7 @@
 
 """
 from pydantic import BaseModel
+
 from voogle.models.analytics import Query
 
 QueryOut = Query.get_pydantic(exclude={"pk"})

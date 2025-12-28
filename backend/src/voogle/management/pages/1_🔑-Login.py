@@ -7,6 +7,7 @@ import typing
 from datetime import timedelta
 
 import streamlit as st
+
 from voogle import auth
 
 st.set_page_config(page_title="Voogle", page_icon="🎧")

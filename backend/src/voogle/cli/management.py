@@ -9,8 +9,9 @@ Run --help to see available options.
 import argparse
 import asyncio
 import logging
-from voogle.models import users
+
 from voogle import auth, settings, transcription
+from voogle.models import users
 
 logger = logging.getLogger(__name__)
 CREATE_DEFAULT_ADMIN_USER = "create (if not exists) the default voogle admin user"

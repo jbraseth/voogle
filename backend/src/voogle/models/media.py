@@ -11,6 +11,7 @@ import enum
 from typing import Optional
 
 import ormar
+
 from voogle.models import base
 
 

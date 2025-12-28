@@ -8,9 +8,9 @@ Everything can be considered an utility, so let's try to keep this as
 small as possible.
 
 """
-import typing
 import re
 import time
+import typing
 import unicodedata
 
 from voogle import settings
