@@ -106,3 +106,4 @@ services:
       - 6333
     volumes:
       - ../../data/qdrant/:/qdrant/storage
+    stop_grace_period: 30s  # Give Qdrant time to flush data to disk on shutdown
