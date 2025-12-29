@@ -30,7 +30,7 @@ DEFAULT_FRAGMENT_WORDS = 40
 # vector spaces, i.e. similar inputs in different languages are mapped
 # close in vector space.
 # see https://www.sbert.net/docs/pretrained_models.html#multi-lingual-models
-DEFAULT_EMBEDDINGS_MODEL = "multi-qa-MiniLM-L6-cos-v1"
+DEFAULT_EMBEDDINGS_MODEL = "BAAI/bge-small-en-v1.5"
 EMBEDDINGS_SIZE = 384
 
 
