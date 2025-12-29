@@ -11,12 +11,18 @@ ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /backend
 # we need curl for the health checks, build-essential to build hnswlib
 # we need ffmpeg to load audios
+# TEMPORARY HACK: pkg-config + ffmpeg dev libs needed to build old PyAV 10.0.0 from source
 RUN apt-get update &&\
-    apt-get install --no-install-recommends -y curl ffmpeg git build-essential &&\
+    apt-get install --no-install-recommends -y curl ffmpeg git build-essential \
+    pkg-config libavformat-dev libavcodec-dev libavdevice-dev \
+    libavutil-dev libavfilter-dev libswscale-dev libswresample-dev &&\
     rm -rf /var/lib/apt/lists/*
 
 COPY ./requirements.txt /backend/requirements.txt
+# TEMPORARY HACK: Install old Cython and build PyAV without isolation
 RUN python3.9 -m pip install -U pip &&\
+    python3.9 -m pip install "Cython<3.0" &&\
+    python3.9 -m pip install --no-build-isolation --no-cache-dir av==10.0.0 &&\
     python3.9 -m pip install --no-cache-dir -r /backend/requirements.txt
 
 COPY . .

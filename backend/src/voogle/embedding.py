@@ -11,10 +11,13 @@ See https://www.sbert.net/examples/applications/semantic-search/README.html
 import functools
 import logging
 import typing
+from typing import Protocol
 
 import numpy as np
+import openai
 import sentence_transformers
 import torch
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from voogle import models, storage
 from voogle import transcription as tr
@@ -22,6 +25,131 @@ from voogle import transcription as tr
 logger = logging.getLogger(__name__)
 
 Embeddings = typing.Union[list[torch.Tensor], np.ndarray, torch.Tensor]
+
+
+class EmbeddingsProvider(Protocol):
+    """Protocol defining the interface for embedding providers.
+
+    Any class implementing these methods can be used as an embeddings provider.
+    This follows the composition over inheritance principle.
+    """
+
+    def get_embedding_dimension(self) -> int:
+        """Return the dimensionality of embeddings produced by this provider."""
+        ...
+
+    def encode_texts(self, texts: list[str]) -> Embeddings:
+        """Encode a list of texts into embeddings."""
+        ...
+
+    def encode_single(self, text: str) -> Embeddings:
+        """Encode a single text into an embedding (used for queries)."""
+        ...
+
+
+class LocalEmbeddingsProvider:
+    """Wrapper around sentence-transformers for local embeddings generation."""
+
+    def __init__(self, model: sentence_transformers.SentenceTransformer):
+        self.model = model
+
+    def get_embedding_dimension(self) -> int:
+        return self.model.get_sentence_embedding_dimension()
+
+    def encode_texts(self, texts: list[str]) -> Embeddings:
+        return self.model.encode(texts)
+
+    def encode_single(self, text: str) -> Embeddings:
+        return self.model.encode([text])
+
+
+class OpenAIEmbeddingsProvider:
+    """Provider using OpenAI's embeddings API."""
+
+    # Hardcoded defaults - these rarely need changing
+    MAX_RETRIES = 3
+    TIMEOUT_SECONDS = 60
+    MAX_BATCH_SIZE = 100
+
+    def __init__(self, api_key: str, model: str = "text-embedding-3-small"):
+        self.client = openai.OpenAI(
+            api_key=api_key, timeout=self.TIMEOUT_SECONDS, max_retries=0
+        )
+        self.model = model
+        self._dimension = 1536  # text-embedding-3-small dimension
+
+        logger.info(f"initialized OpenAI embeddings provider with model={model}")
+
+    def get_embedding_dimension(self) -> int:
+        return self._dimension
+
+    def _call_api(self, texts: list[str]) -> list[list[float]]:
+        """Call OpenAI API with retry logic. Fails loud on non-retryable errors."""
+        logger.info(f"calling OpenAI embeddings API for {len(texts)} texts")
+
+        retryer = retry(
+            stop=stop_after_attempt(self.MAX_RETRIES),
+            wait=wait_exponential(multiplier=1, min=2, max=10),
+            retry=retry_if_exception_type((openai.APIError, openai.APITimeoutError)),
+            reraise=True,
+        )
+
+        @retryer
+        def _do_call():
+            return self.client.embeddings.create(
+                input=texts,
+                model=self.model,
+            )
+
+        try:
+            response = _do_call()
+
+            # Log cost tracking info
+            total_tokens = response.usage.total_tokens
+            estimated_cost = (total_tokens / 1_000_000) * 0.02  # $0.02 per 1M tokens
+            logger.info(
+                "openai_embeddings_call",
+                extra={
+                    "texts_count": len(texts),
+                    "total_tokens": total_tokens,
+                    "estimated_cost_usd": estimated_cost,
+                    "model": self.model,
+                },
+            )
+
+            return [item.embedding for item in response.data]
+
+        except openai.AuthenticationError as e:
+            # Non-retryable - fail immediately
+            logger.error(f"OpenAI authentication failed: {e}", exc_info=True)
+            raise ValueError(f"Invalid OPENAI_API_KEY: {e}") from e
+        except openai.RateLimitError as e:
+            # Check if it's quota exhaustion (not retryable) vs temporary rate limit
+            if "insufficient_quota" in str(e):
+                logger.error(f"OpenAI quota exhausted - not retrying: {e}")
+                raise ValueError(f"OpenAI quota exhausted: {e}") from e
+            # Temporary rate limit - retryable
+            logger.warning(f"OpenAI rate limit hit, will retry: {e}")
+            raise
+
+    def encode_texts(self, texts: list[str]) -> Embeddings:
+        """Encode texts in batches to respect API limits."""
+        if len(texts) == 0:
+            return np.array([])
+
+        # Batch processing for large inputs
+        all_embeddings = []
+        for i in range(0, len(texts), self.MAX_BATCH_SIZE):
+            batch = texts[i : i + self.MAX_BATCH_SIZE]
+            batch_embeddings = self._call_api(batch)
+            all_embeddings.extend(batch_embeddings)
+
+        return np.array(all_embeddings)
+
+    def encode_single(self, text: str) -> Embeddings:
+        """Encode single text (used for queries)."""
+        embeddings = self._call_api([text])
+        return np.array(embeddings)
 
 
 DEFAULT_FRAGMENT_WORDS = 40
@@ -56,6 +184,36 @@ def load_embeddings_model(name: str) -> sentence_transformers.SentenceTransforme
     """
     logger.info(f"loading and caching transformer model {name}")
     return sentence_transformers.SentenceTransformer(name)
+
+
+@functools.cache
+def get_embeddings_provider() -> EmbeddingsProvider:
+    """Factory function to return configured embeddings provider.
+
+    Auto-detects provider based on settings.openai_api_key presence:
+    - If OPENAI_API_KEY is set → OpenAI provider
+    - Otherwise → Local sentence-transformers provider
+
+    Uses cache so provider is loaded once and reused.
+    """
+    from voogle import settings as app_settings
+
+    if app_settings.settings.embeddings_provider == "openai":
+        if not app_settings.settings.openai_api_key:
+            raise ValueError(
+                "OpenAI embeddings provider selected but OPENAI_API_KEY not set. "
+                "Set the environment variable or remove it to use local embeddings."
+            )
+
+        logger.info("using OpenAI embeddings provider")
+        return OpenAIEmbeddingsProvider(
+            api_key=app_settings.settings.openai_api_key,
+            model=app_settings.settings.openai_model,
+        )
+    else:
+        logger.info(f"using local embeddings provider with model={DEFAULT_EMBEDDINGS_MODEL}")
+        model = load_embeddings_model(DEFAULT_EMBEDDINGS_MODEL)
+        return LocalEmbeddingsProvider(model)
 
 
 def calculate_fragments(
@@ -105,26 +263,24 @@ def calculate_fragments(
 
 def _transcription_embeddings(
     transcription: tr.Transcription,
-    model: sentence_transformers.SentenceTransformer,
+    provider: EmbeddingsProvider,
     max_fragment_words: int,
 ) -> tuple[Embeddings, list[Fragment]]:
     fragments = calculate_fragments(transcription, max_fragment_words)
     logger.info(f"encoding {len(fragments)} fragments...")
-    embeddings = model.encode([f.text for f in fragments])
+    embeddings = provider.encode_texts([f.text for f in fragments])
     return embeddings, fragments
 
 
-def text2embedding(
-    text: str, model: sentence_transformers.SentenceTransformer
-) -> Embeddings:
+def text2embedding(text: str, provider: EmbeddingsProvider) -> Embeddings:
     """Return embedding from the given text."""
     logger.info(f"encoding text: {text}")
-    return model.encode([text])
+    return provider.encode_single(text)
 
 
 async def episode_embeddings(
     episode: models.Episode,
-    model: sentence_transformers.SentenceTransformer,
+    provider: EmbeddingsProvider,
     max_fragment_words: int,
 ) -> tuple[Embeddings, list[Fragment]]:
     """Return a list of embeddings for the transcription of the given
@@ -134,7 +290,7 @@ async def episode_embeddings(
     logger.info(f"obtaining embeddings for episode {episode.pk}: {episode.title}")
     trfile = await storage.transcription_file(episode)
     if not trfile.exists():
-        assert ValueError(f"cannot find transcription for {episode.pk}")
+        raise ValueError(f"cannot find transcription for {episode.pk}")
     return _transcription_embeddings(
-        tr.read_transcription(trfile), model, max_fragment_words
+        tr.read_transcription(trfile), provider, max_fragment_words
     )

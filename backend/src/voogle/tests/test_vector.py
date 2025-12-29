@@ -2,7 +2,34 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pytest
+from unittest.mock import Mock, patch
+
 from voogle import embedding, storage, transcription, vector
+
+
+@pytest.fixture
+def local_provider():
+    """Fixture for local embeddings provider"""
+    model = embedding.load_embeddings_model(embedding.DEFAULT_EMBEDDINGS_MODEL)
+    return embedding.LocalEmbeddingsProvider(model)
+
+
+@pytest.fixture
+def mock_openai_provider():
+    """Fixture for mocked OpenAI provider"""
+    with patch("openai.OpenAI") as mock_client:
+        # Mock response for batch of embeddings
+        mock_response = Mock()
+        mock_response.data = [Mock(embedding=[0.1] * 1536) for _ in range(100)]
+        mock_response.usage = Mock(total_tokens=100)
+        mock_client.return_value.embeddings.create.return_value = mock_response
+
+        provider = embedding.OpenAIEmbeddingsProvider(
+            api_key="test-key",
+            model="text-embedding-3-small",
+        )
+        yield provider
 
 
 async def test_calculate_fragments(jobs_transcription, fake_episode):
@@ -18,31 +45,29 @@ async def test_calculate_fragments(jobs_transcription, fake_episode):
     assert len(embs) == 54
 
 
-async def test_store_embeddings(fake_episode):
+async def test_store_embeddings(fake_episode, local_provider):
     # load vector database
-    embedding.load_embeddings_model(embedding.DEFAULT_EMBEDDINGS_MODEL)
     client = vector.get_client()
 
     # load episode and calculate its embeddings
     tr = transcription.read_transcription(
         await storage.transcription_file(fake_episode)
     )
-    model = embedding.load_embeddings_model(embedding.DEFAULT_EMBEDDINGS_MODEL)
     embs, fragments = embedding._transcription_embeddings(
-        tr, model, embedding.DEFAULT_FRAGMENT_WORDS
+        tr, local_provider, embedding.DEFAULT_FRAGMENT_WORDS
     )
     assert len(fragments) == 54
     assert len(embs) == 54
-    assert embs[0].shape == (embedding.EMBEDDINGS_SIZE,)
+    assert embs[0].shape == (384,)  # Local model dimension
 
     # store embeddings
-    dbname = "test"
-    vector.ensure_collection(client, dbname, model)
-    vector.ensure_collection(client, dbname, model)
+    dbname = "test-local"
+    vector.ensure_collection(client, dbname, local_provider.get_embedding_dimension())
+    vector.ensure_collection(client, dbname, local_provider.get_embedding_dimension())
     await vector.add_episode(fake_episode, client, embs, dbname, fragments)
 
     # example query
-    query = embedding.text2embedding("playing golf with other people", model)
+    query = embedding.text2embedding("playing golf with other people", local_provider)
     results = vector.search(client, query, dbname, 3)
     assert len(results) == 3
     for r in results:
