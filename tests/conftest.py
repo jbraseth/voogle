@@ -5,8 +5,11 @@
 """Pytest configuration, hooks, and plugin registration."""
 
 pytest_plugins = [
-    "tests.fixtures.database",
-    "tests.fixtures.net",
-    "tests.fixtures.models",
-    "tests.fixtures.data",
+    "fixtures.database",
+    "fixtures.net",
+    "fixtures.models",
+    "fixtures.test_files",
+    "fixtures.manifest",
+    "fixtures.playwright",
+    "fixtures.voogle",
 ]

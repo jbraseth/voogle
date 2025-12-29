@@ -1,0 +1,6 @@
+{
+  "management_url": "http://localhost:8501",
+  "frontend_url": "http://localhost:80",
+  "admin_username": "voogle-admin",
+  "admin_password": "*audio*search*engine"
+}
