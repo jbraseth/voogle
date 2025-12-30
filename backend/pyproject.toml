@@ -11,3 +11,12 @@ include = ["src"]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
 reportIncompatibleVariableOverride = "warning"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",  # Treat warnings as errors by default
+    # Third-party library warnings we can't fix directly
+    "ignore:'crypt' is deprecated:DeprecationWarning:passlib",
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:jose",
+    "ignore:Deprecated API features detected:sqlalchemy.exc.RemovedIn20Warning:ormar",
+]

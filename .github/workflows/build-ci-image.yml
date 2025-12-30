@@ -1,6 +1,18 @@
 name: Build CI Image
 
 on:
+  # Build on PRs that touch image-related files (validates before merge)
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/dockerfile'
+      - 'tests/requirements.txt'
+      - 'backend/requirements.txt'
+      - 'backend/pyproject.toml'
+      - 'backend/setup.cfg'
+      - '.github/workflows/build-ci-image.yml'
+
+  # Push to registry after merge to main
   push:
     branches: [main]
     paths:
@@ -9,8 +21,10 @@ on:
       - 'backend/requirements.txt'
       - 'backend/pyproject.toml'
       - 'backend/setup.cfg'
-      - 'backend/setup.py'
-  workflow_dispatch:  # Allow manual trigger
+      - '.github/workflows/build-ci-image.yml'
+
+  # Allow manual trigger
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -18,7 +32,7 @@ env:
 
 jobs:
   build:
-    name: Build and Push CI Image
+    name: Build CI Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,7 +53,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.event_name == 'push' }}
             type=sha,prefix=
 
       - name: Build and push CI image
@@ -47,5 +61,6 @@ jobs:
         with:
           context: .
           file: tests/dockerfile
-          push: true
+          # Only push on main branch (not PRs)
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
           tags: ${{ steps.meta.outputs.tags }}
