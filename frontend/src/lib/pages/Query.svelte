@@ -51,11 +51,13 @@
   let episodePlay;
   let channelPlay;
   let time;
+  let mediaUrl;
 
   function click(data) {
     episodePlay = data.detail.episode
     channelPlay = data.detail.channel
     time = data.detail.time
+    mediaUrl = data.detail.media_url
     setTimeout(() => {
       player.scrollIntoView()
     }, 50)
@@ -124,7 +126,7 @@
   {/if}
   {#if channelPlay}
     <div  bind:this="{player}" class="flex flex-row place-content-center mt-1 mx-5 md:mx-10">
-      <Player time={time} channel={channelPlay} episode={episodePlay}/>
+      <Player time={time} channel={channelPlay} episode={episodePlay} media_url={mediaUrl}/>
     </div>
   {/if}
   {#if queryResults}

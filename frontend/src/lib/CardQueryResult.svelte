@@ -30,7 +30,8 @@
     dispatch('click', {
       channel: result.channel,
       episode: result.episode,
-      time: result.start
+      time: result.start,
+      media_url: result.media_url
     });
   }
 </script>
@@ -83,24 +84,13 @@
       {result.text}...
     </p>
   </div>
-  {#if result.channel.kind != "local"}
-    <button class="mt-4 btn btn-sm btn-outline" on:click={click} data-testid="play-button-{result.channel.id}">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
-	<path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-	<path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />
-      </svg>
-      Play fragment
-    </button>
-  {:else}
-    <div class="flex flex-row mt-6">
-	<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
-	  <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-	</svg>
-	<p class="text-xs text-slate-900">
-	  Play fragment not available for local channels
-	</p>
-      </div>
-  {/if}
+  <button class="mt-4 btn btn-sm btn-outline" on:click={click} data-testid="play-button-{result.channel.id}">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />
+    </svg>
+    Play fragment
+  </button>
 
 
 </div>
