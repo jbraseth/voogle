@@ -26,7 +26,7 @@ if [[ "$1" == "--fix" ]]; then
 fi
 
 echo "Building test image (used for linting)..."
-docker build -t voogle-test -f tests/dockerfile .
+docker build -t voogle-test -f tests/dockerfile --target test .
 
 echo "Running ruff..."
 docker run --rm voogle-test ruff check $FIX_FLAG .

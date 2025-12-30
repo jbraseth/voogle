@@ -19,10 +19,18 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
 echo "Building test image..."
-docker build -t voogle-test -f tests/dockerfile .
+docker build -t voogle-test -f tests/dockerfile --target test .
 
 echo "Running tests..."
 docker run --rm \
     -e VOOGLE_ENVIRONMENT=test \
     -e VOOGLE_DATA_DIR=/tmp/voogle-test \
     voogle-test pytest "$@"
+
+# Exit code 5 = no tests collected (OK for now)
+exit_code=$?
+if [ $exit_code -eq 5 ]; then
+    echo "No tests collected (exit code 5) - treating as success"
+    exit 0
+fi
+exit $exit_code

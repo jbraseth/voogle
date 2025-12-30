@@ -1,16 +1,15 @@
 # Copyright (c) 2025-2026 Voogle Contributors
-# Test image with Playwright support
+# Test image - extends backend with test dependencies
 
-FROM python:3.12-slim-bookworm
+# Build backend first, then extend it
+FROM python:3.12-slim-bookworm AS backend-base
 
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /backend
 
-# Install system dependencies
+# Install system dependencies (same as backend)
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     curl \
@@ -19,30 +18,28 @@ RUN apt-get update && \
     build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-# Install application dependencies first (for better caching)
+# Install application dependencies
 COPY ./backend/requirements.txt /backend/requirements.txt
-
-# Install CPU-only torch LAST to override any CUDA deps from requirements
 RUN pip install -U pip && \
-    pip install --no-cache-dir -r /backend/requirements.txt && \
-    pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
+    pip install --no-cache-dir -r /backend/requirements.txt
+
+# Copy and install application
+COPY ./backend /backend
+RUN pip install -e .[dev]
+
+# Test stage - extends backend with test deps
+FROM backend-base AS test
+
+# Install CPU-only torch (override any CUDA deps)
+RUN pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
     pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Install test dependencies
 COPY ./tests/requirements.txt /backend/requirements-test.txt
 RUN pip install --no-cache-dir -r /backend/requirements-test.txt
 
-# Install Playwright browsers (this is the heavy part)
+# Install Playwright browsers
 RUN playwright install --with-deps chromium
-
-# Copy application code
-COPY ./backend /backend
-
-# Install application in editable mode for tests
-WORKDIR /backend
-RUN pip install -e .[dev] && \
-    pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
-    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Default command runs tests
 CMD ["pytest", "-v"]
