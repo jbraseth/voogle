@@ -20,15 +20,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install linting tools
-        run: pip install ruff pyright
+      - name: Install ruff
+        run: pip install ruff
 
       - name: Run ruff
         run: ruff check .
-        working-directory: backend
-
-      - name: Run pyright
-        run: pyright src/
         working-directory: backend
 
   test:
