@@ -7,9 +7,10 @@ pytest-asyncio>=0.24.0
 pytest-env>=1.1.0
 pytest-cov>=6.0.0
 
-# Playwright for E2E/browser testing
-playwright>=1.49.0
-pytest-playwright>=0.6.2
+# Playwright for E2E/browser testing (run locally, not in CI)
+# To run e2e tests locally: pip install playwright pytest-playwright && playwright install chromium
+# playwright>=1.49.0
+# pytest-playwright>=0.6.2
 
 # Test utilities
 pytest-xdist>=3.5.0  # Parallel test execution
