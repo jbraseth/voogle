@@ -22,13 +22,14 @@ echo "Building test image..."
 docker build -t voogle-test -f tests/dockerfile --target test .
 
 echo "Running tests..."
+# Capture exit code without triggering set -e
+exit_code=0
 docker run --rm \
     -e VOOGLE_ENVIRONMENT=test \
     -e VOOGLE_DATA_DIR=/tmp/voogle-test \
-    voogle-test pytest "$@"
+    voogle-test pytest /tests "$@" || exit_code=$?
 
 # Exit code 5 = no tests collected (OK for now)
-exit_code=$?
 if [ $exit_code -eq 5 ]; then
     echo "No tests collected (exit code 5) - treating as success"
     exit 0

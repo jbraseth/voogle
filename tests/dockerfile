@@ -41,5 +41,8 @@ RUN pip install --no-cache-dir -r /backend/requirements-test.txt
 # Install Playwright browsers
 RUN playwright install --with-deps chromium
 
-# Default command runs tests
-CMD ["pytest", "-v"]
+# Copy test files
+COPY ./tests /tests
+
+# Default command runs tests from /tests directory
+CMD ["pytest", "/tests", "-v"]
