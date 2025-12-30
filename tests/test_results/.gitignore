@@ -3,5 +3,13 @@
 *.html
 *.json
 
-# But keep this directory in git
+# Ignore video recordings (but keep .gitkeep)
+videos/*
+!videos/.gitkeep
+
+# Ignore trace files (but keep .gitkeep)
+traces/*
+!traces/.gitkeep
+
+# But keep this directory structure in git
 !.gitignore

@@ -14,8 +14,10 @@ PLAYWRIGHT_NAVIGATION_TIMEOUT_MS = 60000  # 60 seconds for page navigation
 # Test ID attribute (custom data-* attribute for locators)
 TEST_ID_ATTRIBUTE = "data-testid"
 
-# Paths
-VIDEOS_DIR = os.getenv("PLAYWRIGHT_VIDEOS_DIR", str(Path(__file__).parent.parent.parent / "videos"))
+# Paths - all artifacts go to test_results directory
+TEST_RESULTS_DIR = Path(__file__).parent.parent.parent / "test_results"
+VIDEOS_DIR = os.getenv("PLAYWRIGHT_VIDEOS_DIR", str(TEST_RESULTS_DIR / "videos"))
+TRACES_DIR = os.getenv("PLAYWRIGHT_TRACES_DIR", str(TEST_RESULTS_DIR / "traces"))
 
 # Authentication
 ADMIN_USERNAME = "voogle-admin"

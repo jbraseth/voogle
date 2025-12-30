@@ -5,6 +5,7 @@
 
 import os
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any, Callable
 
 import pytest
@@ -12,6 +13,7 @@ from e2e.shared.constants import (
     PLAYWRIGHT_ELEMENT_TIMEOUT_MS,
     PLAYWRIGHT_NAVIGATION_TIMEOUT_MS,
     TEST_ID_ATTRIBUTE,
+    TRACES_DIR,
     VIDEOS_DIR,
 )
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright
@@ -29,10 +31,14 @@ def fixture_browser_context_args(request: FixtureRequest) -> dict[str, Any]:
     }
 
     if capture_video:
-        context_args.update({
-            "record_video_dir": VIDEOS_DIR,
-            "record_video_size": {"width": 1280, "height": 720},
-        })
+        # Ensure videos directory exists
+        Path(VIDEOS_DIR).mkdir(parents=True, exist_ok=True)
+        context_args.update(
+            {
+                "record_video_dir": VIDEOS_DIR,
+                "record_video_size": {"width": 1280, "height": 720},
+            }
+        )
 
     return context_args
 
@@ -77,7 +83,9 @@ def fixture_context(
         and hasattr(request.node, "rep_call")
         and request.node.rep_call.failed
     ):
-        trace_path = os.path.join(VIDEOS_DIR, f"{request.node.name}_trace.zip")
+        # Ensure traces directory exists
+        Path(TRACES_DIR).mkdir(parents=True, exist_ok=True)
+        trace_path = os.path.join(TRACES_DIR, f"{request.node.name}_trace.zip")
         context.tracing.stop(path=trace_path)
     elif tracing_option in ["on", "retain-on-failure"]:
         context.tracing.stop()
