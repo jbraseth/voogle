@@ -24,7 +24,7 @@ RUN pip install -U pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
 # Install dev dependencies from pyproject.toml extras
-COPY ./backend/pyproject.toml ./backend/setup.cfg ./backend/setup.py /app/
+COPY ./backend/pyproject.toml ./backend/setup.cfg /app/
 COPY ./backend/src /app/src
 RUN pip install -e .[dev]
 
