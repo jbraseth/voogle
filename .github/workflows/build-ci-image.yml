@@ -1,0 +1,51 @@
+name: Build CI Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/dockerfile'
+      - 'tests/requirements.txt'
+      - 'backend/requirements.txt'
+      - 'backend/pyproject.toml'
+      - 'backend/setup.cfg'
+      - 'backend/setup.py'
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-ci
+
+jobs:
+  build:
+    name: Build and Push CI Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=
+
+      - name: Build and push CI image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: tests/dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
