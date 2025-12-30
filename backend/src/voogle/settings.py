@@ -15,6 +15,7 @@ environment variables.
 """
 import enum
 import pathlib
+from typing import Optional
 
 import pydantic
 import redis  # type: ignore
@@ -49,13 +50,23 @@ class Settings(pydantic.BaseSettings):
     # you can generate it with: openssl rand -hex 32
     secret_key: str = "917b2755cafdb6456cc718a5d6b25d0ac25a4f12a288dbc8941f39861a86ab06"
 
+    # OpenAI Embeddings Configuration (optional)
+    # If OPENAI_API_KEY is set, uses OpenAI API instead of local models
+    openai_api_key: Optional[str] = None
+    openai_model: str = "text-embedding-3-small"
+
     @property
     def data_dir(self) -> pathlib.Path:
-        if self.environment == Environment.production.value:
-            return pathlib.Path("/data")
-        elif self.environment == Environment.test.value:
+        # In Docker (both dev and prod), data is always mounted at /data
+        # For native development or test, use repo_dir-based paths
+        if self.environment == Environment.test.value:
             return self.repo_dir / "data-test"
-        return self.repo_dir / "data"
+        elif pathlib.Path("/data").exists():
+            # Running in Docker - use mounted volume
+            return pathlib.Path("/data")
+        else:
+            # Running natively - use repo-relative path
+            return self.repo_dir / "data"
 
     @property
     def media_folder(self) -> pathlib.Path:
@@ -70,6 +81,14 @@ class Settings(pydantic.BaseSettings):
         return redis.Redis(
             host=self.redis_host, db=REDIS_CACHE_DB_NUMBER, decode_responses=True
         )
+
+    @property
+    def embeddings_provider(self) -> str:
+        """Auto-detect embeddings provider based on API key presence.
+
+        Returns 'openai' if OPENAI_API_KEY is set, otherwise 'local'.
+        """
+        return "openai" if self.openai_api_key else "local"
 
 
 def create_queue(settings: Settings) -> Queue:

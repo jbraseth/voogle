@@ -19,11 +19,14 @@ test-env-prod:
 dev-build: test-env-dev
 	cd development/ && docker compose build
 
+dev-rebuild: test-env-dev
+	cd development/ && docker compose build --no-cache
+
 dev-run: test-env-dev
 	cd development/ && docker compose up
 
 prod-build: test-env-prod
-	cd production/ && docker compose build
+	cd production/ && docker compose build --no-cache
 
 prod-run: test-env-prod
 	cd production/ && docker compose up

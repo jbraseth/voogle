@@ -69,7 +69,7 @@ async def transcribe_episodes(
 
 async def store_episode_embeddings(
     episode: models.Episode,
-    model: sentence_transformers.SentenceTransformer,
+    provider: embedding.EmbeddingsProvider,
     client: qdrant_client.QdrantClient,
     collection_name: str,
 ) -> None:
@@ -79,29 +79,47 @@ async def store_episode_embeddings(
     title = episode.title
     logger.info(f"storing embeddings for episode {title}: {episode.pk}")
     utils.log_event("event_store_start", title)
-    embeddings, fragments = await embedding.episode_embeddings(
-        episode, model, embedding.DEFAULT_FRAGMENT_WORDS
-    )
-    await vector.add_episode(episode, client, embeddings, collection_name, fragments)
-    utils.log_event("event_store_end", title)
+    try:
+        embeddings, fragments = await embedding.episode_embeddings(
+            episode, provider, embedding.DEFAULT_FRAGMENT_WORDS
+        )
+        await vector.add_episode(episode, client, embeddings, collection_name, fragments)
+        utils.log_event("event_store_end", title)
+    except Exception as e:
+        # Fail loud: log error but let exception propagate
+        logger.error(
+            f"failed to store embeddings for episode {episode.pk}",
+            exc_info=True,
+            extra={"episode_id": episode.pk, "episode_title": title},
+        )
+        raise  # Don't swallow!
     return
 
 
 async def store_episodes_embeddings() -> None:
     """Store pending episodes embeddings in the vector database"""
     logger.info("storing all pending episodes in vector database")
+
+    # Get provider and collection config
+    provider = embedding.get_embeddings_provider()
+    provider_name = settings.settings.embeddings_provider
+    collection_name = vector.get_collection_name(provider_name)
+
+    logger.info(f"using provider={provider_name}, collection={collection_name}")
+
+    # Setup vector database
     client = vector.get_configured_client()
-    model = embedding.load_embeddings_model(embedding.DEFAULT_EMBEDDINGS_MODEL)
-    vector.ensure_collection(client, vector.DEFAULT_COLLECTION, model)
+    vector.ensure_collection(client, collection_name, provider.get_embedding_dimension())
+
+    # Process episodes
     episodes = await models.Episode.objects.filter(
         transcribed=True, embeddings=False
     ).all()
     logger.info(f"there are {len(episodes)} pending episodes...")
     random.shuffle(episodes)
+
     for episode in episodes:
-        await store_episode_embeddings(
-            episode, model, client, vector.DEFAULT_COLLECTION
-        )
+        await store_episode_embeddings(episode, provider, client, collection_name)
     return
 
 
@@ -112,16 +130,22 @@ def search(
     related to the given text in all the vector database.
 
     """
-    model = embedding.load_embeddings_model(embedding.DEFAULT_EMBEDDINGS_MODEL)
+    provider = embedding.get_embeddings_provider()
+    provider_name = settings.settings.embeddings_provider
+    collection_name = vector.get_collection_name(provider_name)
+
+    logger.info(f"searching with provider={provider_name}, collection={collection_name}")
+
     query_filter = None
     if channel:
         query_filter = Filter(
             **{"must": [{"key": "channel", "match": {"value": channel}}]}
         )
+
     return vector.search(
         vector.get_configured_client(),
-        embedding.text2embedding(text, model),
-        vector.DEFAULT_COLLECTION,
+        embedding.text2embedding(text, provider),
+        collection_name,
         num_results,
         query_filter=query_filter,
     )

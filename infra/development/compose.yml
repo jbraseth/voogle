@@ -20,6 +20,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    env_file:
+      - .env
     ports:
       - ${VITE_API_PORT:-81}:80
     command:  uvicorn src.voogle.main:app --reload --host 0.0.0.0 --port 80
@@ -60,6 +62,8 @@ services:
       dockerfile: dockerfile
       args:
         INSTALL_DEV: true
+    env_file:
+      - .env
     ports:
       - ${VOOGLE_MANAGEMENT_PORT:-8501}:8501
     command: streamlit run src/voogle/management/🏠-Home.py
@@ -88,6 +92,8 @@ services:
       dockerfile: dockerfile
       args:
         INSTALL_DEV: true
+    env_file:
+      - .env
     command: python src/voogle/worker.py
     volumes:
       - ../../backend/:/backend/
