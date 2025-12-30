@@ -33,10 +33,11 @@ Voogle performs four main tasks:
 
 ### Tech Stack
 
-- **Backend**: Python 3.x, FastAPI, Ormar ORM, faster-whisper, sentence-transformers
+- **Backend**: Python 3.12, FastAPI, Ormar ORM, faster-whisper, sentence-transformers
 - **Frontend**: Svelte 3, Vite, Tailwind CSS, DaisyUI
 - **Databases**: SQLite (metadata), Qdrant (vector embeddings), Redis (job queue)
 - **ML Models**: Whisper (transcription), SBERT (embeddings)
+- **CI/CD**: GitHub Actions, ghcr.io container registry
 
 ## Quick Commands
 
@@ -118,24 +119,32 @@ make dev-run
 
 ---
 
-### Testing
+### Testing & CI
 
+**Local Development:**
 ```bash
-# Backend tests (recommended - fastest)
 cd backend
 pytest                                    # Run all tests
 pytest tests/test_specific.py            # Run specific test file
 pytest -v -s                              # Verbose output with prints
-pytest --cov=src/voogle --cov-report=html # With coverage
+pytest --ignore=tests/e2e                 # Skip e2e tests (need full stack)
 
 # Linting
 ruff check .                              # Check for issues
-black --check .                           # Check formatting
+pyright src/                              # Type checking (optional)
 
-# If using Docker dev workflow
-cd infra/development
-docker compose exec backend pytest
+# E2E tests (requires frontend + backend running)
+pip install playwright pytest-playwright
+playwright install chromium
+pytest tests/e2e -v
 ```
+
+**CI Pipeline (GitHub Actions):**
+- **Lint** (~7 seconds): Runs `ruff` natively on GitHub runner
+- **Test** (~2 minutes): Runs pytest in Docker with full dependencies
+- **Build CI Image**: Only runs when dockerfile/requirements change
+
+CI automatically runs on pull requests to `main`. Type checking (pyright) is optional and not blocking in CI.
 
 ---
 
@@ -244,7 +253,12 @@ cp infra/production/.env.example infra/production/.env
 See [docs/plan.md](docs/plan.md) for active tasks and planning.
 See [CHANGELOG.md](CHANGELOG.md) for recent changes and reasoning.
 
-**Current Focus**: Renaming project from Voogle to Voogle (see GitHub issue #1)
+**Recent Milestones**:
+- Python 3.12 upgrade with modernized dependencies
+- CI pipeline with fast feedback (~7s lint, ~2min tests)
+- Baseline test suite (unit, component, integration)
+
+**Ready for**: New feature development on a solid, tested foundation.
 
 ## Critical Patterns
 
@@ -286,7 +300,7 @@ See [CHANGELOG.md](CHANGELOG.md) for recent changes and reasoning.
 ```
 voogle/
 ├── backend/                      # Python FastAPI backend
-│   ├── src/voogle/              # Main application code (to be renamed to voogle)
+│   ├── src/voogle/              # Main application code
 │   ├── migrations/              # Alembic database migrations
 │   ├── dockerfile               # Production Dockerfile
 │   ├── requirements.txt         # Python dependencies
@@ -296,24 +310,27 @@ voogle/
 │   ├── public/                  # Static assets
 │   ├── dockerfile.dev           # Development Dockerfile
 │   └── dockerfile.prod          # Production Dockerfile
+├── tests/                        # Test suite
+│   ├── unit/                    # Pure function tests
+│   ├── component/               # Module isolation tests
+│   ├── integration/             # API + DB tests
+│   ├── e2e/                     # Browser-based tests (Playwright)
+│   ├── fixtures/                # Shared test fixtures
+│   ├── dockerfile               # CI test image
+│   └── requirements.txt         # Test dependencies
 ├── infra/                        # Infrastructure & deployment
-│   ├── development/             # Dev environment
-│   │   ├── compose.yml          # Dev stack with bind mounts for hot reload
-│   │   └── .env.example         # Dev environment variables template
-│   ├── production/              # Production environment
-│   │   ├── compose.yml          # Prod stack with Traefik reverse proxy
-│   │   ├── .env.example         # Prod environment variables template
-│   │   └── traefik.prod.toml    # Traefik configuration
-│   └── makefile                 # Infrastructure commands (dev-build, dev-run, etc.)
+│   ├── development/             # Dev environment (compose.yml, .env.example)
+│   ├── production/              # Prod environment (Traefik, replicas)
+│   └── makefile                 # Infrastructure commands
+├── .github/workflows/            # CI/CD
+│   ├── backend.yml              # Lint + Test on PRs
+│   └── build-ci-image.yml       # Build CI image when deps change
+├── scripts/                      # Utility scripts
+│   ├── lint.sh                  # Docker-based linting
+│   └── test.sh                  # Docker-based testing
 ├── context/                      # Claude Code context
-│   ├── design-principles.md     # Core design philosophy
-│   └── style-guide.md           # Code style conventions
 ├── docs/                         # Project documentation
-│   └── plan.md                  # Current task planning
-├── data/                         # Development runtime data (git-ignored)
-│   ├── voogle.db                # SQLite database
-│   ├── media/                   # Audio files and transcriptions
-│   └── qdrant/                  # Vector database storage
+├── pytest.ini                    # Pytest configuration
 ├── CLAUDE.md                     # This file - Claude Code context
 └── CHANGELOG.md                  # Project changelog with reasoning
 ```

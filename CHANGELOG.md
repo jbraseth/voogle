@@ -9,19 +9,39 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Changed
-- **Upgraded Python from 3.9/3.10 to 3.12** (#7)
+- **Upgraded Python from 3.9/3.10 to 3.12** (#7, #8)
   - Updated all Dockerfiles to use `python:3.12-slim-bookworm`
   - Migrated ormar models from `class Meta` to `ormar_config` pattern (ormar 0.20.x breaking change)
   - Migrated pydantic `BaseSettings` to `pydantic-settings` package (Pydantic v2 breaking change)
   - Upgraded all dependencies to latest compatible versions
-  - Added `scripts/lint.sh` and `scripts/test.sh` for Docker-based CI
-  - Simplified GitHub Actions workflow to use new CI scripts
+  - Fixed deprecation warnings: FastAPI lifespan events, qdrant collection API
 
 **WHY**: Python 3.12 brings performance improvements, better error messages, and security updates. Staying on 3.9/3.10 was becoming a liability as dependencies dropped support.
 
 **REASONING**: This was a significant upgrade involving breaking changes in ormar (ORM) and pydantic (settings). The ormar 0.20 release changed the model configuration API entirely, and pydantic v2 moved BaseSettings to a separate package.
 
+- **Optimized CI pipeline for fast feedback** (#9)
+  - Lint runs natively on GitHub runner (~7 seconds) using ruff only
+  - Test runs in Docker with full dependencies (~2 minutes)
+  - Separate Build CI Image workflow - only triggers when dockerfile/requirements change
+  - Removed Playwright from CI image (e2e tests run locally)
+  - Type checking (pyright) is optional, not blocking in CI
+
+**WHY**: Fast CI feedback is critical for developer productivity. Waiting 4+ minutes for lint results is unacceptable.
+
+**REASONING**: Ruff doesn't need dependencies to run - it's pure syntax analysis. By running it natively instead of pulling an 8GB Docker image, lint drops from 3+ minutes to 7 seconds. Pyright needs all deps to resolve imports, so it remains optional for devs to run locally.
+
 ### Added
+- **Baseline test infrastructure** (#6)
+  - Unit tests for pure functions
+  - Component tests for modules in isolation
+  - Integration tests for API + database
+  - E2E tests with Playwright (run locally)
+  - Pytest configuration with warning filters for third-party deprecations
+  - Test fixtures for database, models, and HTTP mocking
+
+**WHY**: A solid test foundation enables confident refactoring and feature development. Tests document expected behavior and catch regressions early.
+
 - Claude Code context files for AI-assisted development
   - `CLAUDE.md`: Comprehensive project overview, architecture, and critical patterns
   - `docs/plan.md`: Detailed task planning for the Voilib → Voogle rename
