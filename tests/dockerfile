@@ -1,8 +1,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # Test image with Playwright support
-# Using Ubuntu 22.04 for Python 3.10 (PyAV 10.0.0 incompatible with Python 3.12)
 
-FROM docker.io/library/ubuntu:22.04
+FROM python:3.12-slim-bookworm
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -11,48 +10,27 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /backend
 
-# Install Python 3.10 and system dependencies
+# Install system dependencies
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-    python3.10 \
-    python3.10-dev \
-    python3.10-venv \
-    python3-pip \
     curl \
     git \
     ffmpeg \
-    build-essential \
-    pkg-config \
-    libavformat-dev \
-    libavcodec-dev \
-    libavdevice-dev \
-    libavutil-dev \
-    libavfilter-dev \
-    libswscale-dev \
-    libswresample-dev && \
+    build-essential && \
     rm -rf /var/lib/apt/lists/*
-
-# Create python3 symlink
-RUN ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
-    ln -sf /usr/bin/python3.10 /usr/bin/python
 
 # Install application dependencies first (for better caching)
 COPY ./backend/requirements.txt /backend/requirements.txt
 
-# TEMPORARY HACK: Install old Cython and build PyAV without isolation
-# PyAV 10.0.0 has Cython compilation errors with modern Cython
 # Install CPU-only torch LAST to override any CUDA deps from requirements
-RUN python3 -m pip install "Cython<3.0" && \
-    python3 -m pip install --no-build-isolation --no-cache-dir av==10.0.0 && \
-    python3 -m pip install --no-cache-dir -r /backend/requirements.txt && \
-    python3 -m pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
-    python3 -m pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN pip install -U pip && \
+    pip install --no-cache-dir -r /backend/requirements.txt && \
+    pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
+    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Install test dependencies
-# Downgrade httpx after test deps to fix starlette TestClient compatibility
 COPY ./tests/requirements.txt /backend/requirements-test.txt
-RUN python3 -m pip install --no-cache-dir -r /backend/requirements-test.txt && \
-    python3 -m pip install --no-cache-dir "httpx==0.25.0"
+RUN pip install --no-cache-dir -r /backend/requirements-test.txt
 
 # Install Playwright browsers (this is the heavy part)
 RUN playwright install --with-deps chromium

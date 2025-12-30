@@ -21,11 +21,12 @@ class CoreModel(ormar.Model):
 
     """
 
+    ormar_config = ormar.OrmarConfig(
+        abstract=True,
+        metadata=metadata,
+        database=database,
+    )
+
     pk = ormar.Integer(primary_key=True)
     id = ormar.UUID(default=uuid.uuid4, uuid_format="string")
     created_at = ormar.DateTime(default=datetime.now, timezone=True)
-
-    class Meta:
-        abstract = True
-        metadata = metadata
-        database = database

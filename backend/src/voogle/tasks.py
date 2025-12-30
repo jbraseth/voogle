@@ -10,7 +10,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import qdrant_client
-import sentence_transformers
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from voogle import collection, embedding, models, settings, transcription, utils, vector
@@ -85,7 +84,7 @@ async def store_episode_embeddings(
         )
         await vector.add_episode(episode, client, embeddings, collection_name, fragments)
         utils.log_event("event_store_end", title)
-    except Exception as e:
+    except Exception:
         # Fail loud: log error but let exception propagate
         logger.error(
             f"failed to store embeddings for episode {episode.pk}",

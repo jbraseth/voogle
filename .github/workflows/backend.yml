@@ -1,4 +1,4 @@
-name: Voogle back-end tests
+name: Voogle CI
 
 on:
   pull_request:
@@ -6,38 +6,19 @@ on:
       - main
 
 jobs:
-  build:
-
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10"]
-
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        working-directory: ./backend
-        run: |
-          sudo apt-get update
-          # TEMPORARY: FFmpeg dev libraries only needed for PyAV 10.0.0 (no prebuilt wheels)
-          # Remove these after upgrading to PyAV >=12.x: pkg-config, libavformat-dev,
-          # libavcodec-dev, libavdevice-dev, libavutil-dev, libswscale-dev,
-          # libswresample-dev, libavfilter-dev
-          sudo apt-get install -y ffmpeg pkg-config \
-            libavformat-dev libavcodec-dev libavdevice-dev \
-            libavutil-dev libswscale-dev libswresample-dev libavfilter-dev
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install .[dev]
-      - name: Lint with ruff
-        working-directory: ./backend
-        run: |
-          ruff check --target-version=py39 .
-      - name: Test with pytest
-        working-directory: ./backend
-        run: |
-          pytest
+      - uses: actions/checkout@v4
+      - name: Run linting
+        run: ./scripts/lint.sh
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: ./scripts/test.sh -v

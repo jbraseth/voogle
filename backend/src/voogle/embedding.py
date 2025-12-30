@@ -17,7 +17,7 @@ import numpy as np
 import openai
 import sentence_transformers
 import torch
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from voogle import models, storage
 from voogle import transcription as tr
@@ -50,11 +50,14 @@ class EmbeddingsProvider(Protocol):
 class LocalEmbeddingsProvider:
     """Wrapper around sentence-transformers for local embeddings generation."""
 
-    def __init__(self, model: sentence_transformers.SentenceTransformer):
+    def __init__(self, model: sentence_transformers.SentenceTransformer) -> None:
         self.model = model
 
     def get_embedding_dimension(self) -> int:
-        return self.model.get_sentence_embedding_dimension()
+        dim = self.model.get_sentence_embedding_dimension()
+        if dim is None:
+            raise ValueError("Model does not have a sentence embedding dimension")
+        return dim
 
     def encode_texts(self, texts: list[str]) -> Embeddings:
         return self.model.encode(texts)
@@ -71,7 +74,7 @@ class OpenAIEmbeddingsProvider:
     TIMEOUT_SECONDS = 60
     MAX_BATCH_SIZE = 100
 
-    def __init__(self, api_key: str, model: str = "text-embedding-3-small"):
+    def __init__(self, api_key: str, model: str = "text-embedding-3-small") -> None:
         self.client = openai.OpenAI(
             api_key=api_key, timeout=self.TIMEOUT_SECONDS, max_retries=0
         )
@@ -95,7 +98,7 @@ class OpenAIEmbeddingsProvider:
         )
 
         @retryer
-        def _do_call():
+        def _do_call() -> openai.types.CreateEmbeddingResponse:
             return self.client.embeddings.create(
                 input=texts,
                 model=self.model,

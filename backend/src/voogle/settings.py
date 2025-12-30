@@ -19,6 +19,7 @@ from typing import Optional
 
 import pydantic
 import redis
+from pydantic_settings import BaseSettings
 from rq import Queue
 
 CODE_DIR = pathlib.Path(__file__).parent
@@ -33,7 +34,7 @@ class Environment(enum.Enum):
     production = "production"
 
 
-class Settings(pydantic.BaseSettings):  # type: ignore[attr-defined]
+class Settings(BaseSettings):
     # this default variables will be used when running the system
     # without any additional env var (usually, we will want them to be
     # synchronized with the ones in infra/dev/.env.dev)
