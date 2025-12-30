@@ -14,7 +14,6 @@ from functools import cache
 from typing import NamedTuple, Optional, Union
 
 import qdrant_client
-import sentence_transformers
 from qdrant_client import models
 
 from voogle import embedding, settings, storage
@@ -23,6 +22,17 @@ from voogle.models import Episode
 DEFAULT_COLLECTION: str = "vectordb"
 
 logger = logging.getLogger(__name__)
+
+
+def get_collection_name(provider_name: str) -> str:
+    """Return collection name based on embeddings provider.
+
+    Separate collections ensure embeddings from different models/providers
+    don't mix (different dimensions require different vector configs).
+    """
+    if provider_name == "openai":
+        return f"{DEFAULT_COLLECTION}-openai"
+    return DEFAULT_COLLECTION  # "vectordb" for local
 
 
 class QueryResponse(NamedTuple):
@@ -66,15 +76,14 @@ def get_configured_client() -> qdrant_client.QdrantClient:
 def create_collection(
     client: qdrant_client.QdrantClient,
     name: str,
-    embeddings_model: sentence_transformers.SentenceTransformer,
+    vector_dimension: int,
 ) -> None:
     """Create a collection in the vector database with the given name."""
-    logger.info(f"creating qdrant collection {name}")
-    vsize = embeddings_model.get_sentence_embedding_dimension()
+    logger.info(f"creating qdrant collection {name} with dimension={vector_dimension}")
     client.recreate_collection(
         collection_name=name,
         vectors_config=models.VectorParams(
-            size=vsize,  # type: ignore
+            size=vector_dimension,  # type: ignore
             distance=models.Distance.COSINE,
         ),
     )
@@ -84,7 +93,7 @@ def create_collection(
 def ensure_collection(
     client: qdrant_client.QdrantClient,
     collection_name: str,
-    embeddings_model: sentence_transformers.SentenceTransformer,
+    vector_dimension: int,
 ):
     logger.info(f"trying to find collection {collection_name}")
     collections = client.get_collections().collections
@@ -92,7 +101,7 @@ def ensure_collection(
     found = [c for c in collections if c.name == collection_name]
     if not found:
         logger.info("collection not found, creating it")
-        create_collection(client, collection_name, embeddings_model)
+        create_collection(client, collection_name, vector_dimension)
     return
 
 
