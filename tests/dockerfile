@@ -44,5 +44,8 @@ RUN playwright install --with-deps chromium
 # Copy test files
 COPY ./tests /tests
 
+# Set PYTHONPATH so fixtures module is discoverable
+ENV PYTHONPATH=/tests
+
 # Default command runs tests from /tests directory
 CMD ["pytest", "/tests", "-v"]
