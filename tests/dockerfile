@@ -32,12 +32,9 @@ RUN pip install -e .[dev]
 RUN pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
     pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-# Install test dependencies
+# Install test dependencies (excluding playwright - e2e tests run separately)
 COPY ./tests/requirements.txt /app/requirements-test.txt
 RUN pip install --no-cache-dir -r /app/requirements-test.txt
-
-# Install Playwright browsers
-RUN playwright install --with-deps chromium
 
 # Working directory for running commands
 WORKDIR /workspace
