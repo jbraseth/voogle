@@ -8,6 +8,18 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 ## [Unreleased]
 
+### Added
+- **Static route for local media files** (#11)
+  - New `/local/<channel>/<file>` endpoint to serve audio files from the media folder
+  - Path traversal protection prevents access to files outside media directory
+  - Query results now include `media_url` field with the appropriate playback URL
+  - Local channels return `/local/...` URLs, podcast channels return original URLs
+  - Integration tests for file serving, 404 handling, and path security
+
+**WHY**: Local episodes stored on disk need a stable URL for frontend playback. Without this route, the frontend couldn't play locally indexed audio files.
+
+**REASONING**: URL rewriting happens at the presentation layer (in query results) rather than in the database, keeping the schema unchanged. The `/local/` route uses path resolution and prefix checking to prevent directory traversal attacks.
+
 ### Changed
 - **Upgraded Python from 3.9/3.10 to 3.12** (#7, #8)
   - Updated all Dockerfiles to use `python:3.12-slim-bookworm`

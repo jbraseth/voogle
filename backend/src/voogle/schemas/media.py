@@ -37,3 +37,4 @@ class QueryResponse(BaseModel):
     episode: Optional["EpisodeOut"]  # type: ignore[misc]
     channel: Optional["ChannelOut"]  # type: ignore[misc]
     start: float
+    media_url: str

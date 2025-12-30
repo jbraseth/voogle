@@ -5,5 +5,6 @@
 
 from . import analytics as analytics
 from . import app as app
+from . import local as local
 from . import media as media
 from . import users as users
