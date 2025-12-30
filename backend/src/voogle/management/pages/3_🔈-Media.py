@@ -10,7 +10,7 @@ from voogle import collection, models, routers, settings, tasks
 from voogle.management import utils as m_utils
 
 
-async def add_channel():
+async def add_channel() -> None:
     st.header("Add new podcast")
     with st.form("my_form"):
         st.markdown(
@@ -33,7 +33,7 @@ async def add_channel():
                     )
 
 
-async def add_local_channel():
+async def add_local_channel() -> None:
     st.header("Add local channel")
     st.markdown(
         """For each local channel you want to include, create a folder within
@@ -74,7 +74,7 @@ async def add_local_channel():
                 st.success("Episodes are being updated in a background task...")
 
 
-async def podcasts_and_episodes():
+async def podcasts_and_episodes() -> None:
     st.header("Podcasts and episodes")
 
     col1, col2, col3 = st.columns(3)
@@ -99,10 +99,10 @@ async def podcasts_and_episodes():
                 st.markdown(ch.description)
 
 
-async def main():
+async def main() -> None:
     st.set_page_config(page_title="Voogle", page_icon="🎧")
     st.title("📻 Media")
-    if m_utils.login_message(st.session_state):
+    if m_utils.login_message(st.session_state):  # type: ignore[arg-type]
         await add_channel()
         st.divider()
         await add_local_channel()

@@ -1,0 +1,38 @@
+# Test service override - use with: docker compose -f compose.yml -f compose.test.yml
+# Run from tests/infra/ directory: ./test.sh
+# NOTE: Paths are relative to infra/development/ (location of base compose.yml)
+services:
+  test:
+    build:
+      context: ../../  # Project root from infra/development
+      dockerfile: tests/dockerfile
+
+    working_dir: /app
+
+    environment:
+      - ENVIRONMENT=test
+      - PYTHONPATH=/app/tests
+
+    entrypoint: /bin/bash
+    command: -c "pytest -v"
+
+    volumes:
+      # Mount source for live code changes during test development
+      # Paths are relative to infra/development/
+      - ../../backend/src:/backend/src:z
+      - ../../tests:/app/tests:z
+      - ../../pytest.ini:/app/pytest.ini:z
+      - ../../data-test:/data:z
+
+    # Connect to the default voogle network to reach running services
+    networks:
+      - default
+
+    depends_on:
+      - redis
+      - qdrant
+
+  # Override qdrant to use test data directory
+  qdrant:
+    volumes:
+      - ../../data-test/qdrant:/qdrant/storage:z

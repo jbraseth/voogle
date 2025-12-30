@@ -21,7 +21,7 @@ def get_db_url() -> str:
 
     """
     curset = settings.settings
-    base = f"sqlite:///{str(settings.settings.data_dir)}"
+    base = f"sqlite:///{settings.settings.data_dir!s}"
 
     ""
     if curset.environment == settings.Environment.development.value:

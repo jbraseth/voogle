@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Main module that will be always executed on startup.
-
-"""
+"""Main module that will be always executed on startup."""
 import logging
 
 import fastapi

@@ -2,9 +2,8 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Authentication related models
-
-"""
+"""Authentication related models"""
+from typing import ClassVar
 
 import ormar
 
@@ -20,14 +19,14 @@ class User(CoreModel):
 
     """
 
-    class Meta(ormar.ModelMeta):
+    class Meta:
         tablename = "user"
-        constraints = [
+        constraints: ClassVar = [
             ormar.UniqueColumns("email"),
             ormar.UniqueColumns("username"),
         ]
 
     email = ormar.String(max_length=400)
     username = ormar.String(max_length=40)
-    hashed_password: str = ormar.String(max_length=65)  # type: ignore
-    admin: bool = ormar.Boolean(default=False)
+    hashed_password = ormar.String(max_length=65)
+    admin = ormar.Boolean(default=False)

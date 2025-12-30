@@ -2,14 +2,12 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-""" Media-related schemas.
-
-"""
-import typing
+"""Media-related schemas."""
+from typing import Optional
 
 from pydantic import BaseModel
+
 from voogle import transcription
-from voogle.models.base import CoreModel
 from voogle.models.media import Channel, Episode
 
 ChannelOut = Channel.get_pydantic(exclude={"pk", "episodes"})
@@ -21,7 +19,7 @@ class ChannelIn(BaseModel):
     feed_url: str
 
 
-EpisodeIn = Episode.get_pydantic(exclude=set(CoreModel.__fields__.keys()))
+EpisodeIn = Episode.get_pydantic(exclude={"pk", "id", "created_at"})
 EpisodeOut = Episode.get_pydantic(exclude={"pk", "channel"})
 
 
@@ -36,6 +34,6 @@ class QueryResponse(BaseModel):
 
     text: str
     similarity: float
-    episode: typing.Union[EpisodeOut, None]  # type: ignore
-    channel: typing.Union[ChannelOut, None]  # type: ignore
+    episode: Optional["EpisodeOut"]  # type: ignore[misc]
+    channel: Optional["ChannelOut"]  # type: ignore[misc]
     start: float

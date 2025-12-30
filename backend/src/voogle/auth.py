@@ -11,7 +11,7 @@ token expiration time.
 
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import fastapi
@@ -62,7 +62,7 @@ async def authenticate_user(username: str, password: str) -> Optional[models.Use
 
     """
     user = await get_user(username)
-    if user and _verify_password(password, user.hashed_password):
+    if user and _verify_password(password, str(user.hashed_password)):
         return user
     return None
 
@@ -73,7 +73,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
     delta = expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": datetime.utcnow() + delta})
+    to_encode.update({"exp": datetime.now(timezone.utc) + delta})
     return jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
 
 
@@ -96,8 +96,8 @@ async def get_current_user(
         username: Optional[str] = payload.get("sub") if payload else None
         if username is None:
             raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+    except JWTError as e:
+        raise credentials_exception from e
     user = await get_user(username=username)
     if user is None:
         raise credentials_exception

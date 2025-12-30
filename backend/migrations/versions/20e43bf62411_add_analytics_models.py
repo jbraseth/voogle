@@ -11,10 +11,9 @@ Revises: 9f05ae827591
 Create Date: 2023-05-03 18:40:21.222251
 
 """
-from alembic import op
-import sqlalchemy as sa
 import ormar
-
+import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20e43bf62411"
@@ -28,7 +27,7 @@ def upgrade() -> None:
     op.create_table(
         "queries",
         sa.Column("pk", sa.Integer(), nullable=False),
-        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),
+        sa.Column("id", ormar.fields.sqlalchemy_uuid.CHAR(36), nullable=True),  # type: ignore[attr-defined]
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("text", sa.String(length=150), nullable=False),
         sa.PrimaryKeyConstraint("pk"),

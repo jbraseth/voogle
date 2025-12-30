@@ -11,12 +11,11 @@ don't interact with the database.
 from __future__ import annotations
 
 import logging
-import typing
-import xml
+import xml.parsers.expat
 from datetime import datetime
 
 import dateutil.parser
-import requests  # type: ignore
+import requests
 import xmltodict
 
 from voogle import models
@@ -46,7 +45,7 @@ def _episode_date(date: str) -> datetime:
     return dateutil.parser.parse(date)
 
 
-def _episode_duration(duration: typing.Optional[str]) -> int:
+def _episode_duration(duration: str | None) -> int:
     hours, minutes, secs = "0", "0", "0"
     if not duration:
         return -1
@@ -60,7 +59,7 @@ def _episode_duration(duration: typing.Optional[str]) -> int:
     return int(duration)
 
 
-def _episode_guid(guid: typing.Union[dict, str]) -> str:
+def _episode_guid(guid: dict | str) -> str:
     return guid["#text"] if isinstance(guid, dict) else guid
 
 
@@ -98,7 +97,9 @@ def read_episodes(channel: models.Channel) -> list[models.Episode]:
     a given channel.
     """
     logger.info(f"reading episodes from channel: {channel.id}: {channel.title}")
-    feed = _read_channel_feed(channel.feed)
+    feed = _read_channel_feed(str(channel.feed))
+    if feed is None:
+        return []
     episodes: list[models.Episode] = []
     for ep in feed["rss"]["channel"]["item"]:
         if ep.get("itunes:episodeType", None) not in ["bonus", "trailer"]:

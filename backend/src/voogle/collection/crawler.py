@@ -12,7 +12,6 @@ from __future__ import annotations
 import importlib.resources
 import json
 import logging
-from typing import Optional
 
 from voogle import models, storage
 from voogle.collection import feed, local
@@ -92,7 +91,7 @@ async def add_local_channels() -> int:
 
 async def _maybe_add_episode(
     channel: models.Channel, episode: models.Episode
-) -> Optional[models.Episode]:
+) -> models.Episode | None:
     # add a new episode only if it doesn't exist yet (if exists, return None)
     existing = await models.Episode.objects.get_or_none(url=episode.url)
     if existing is not None:
@@ -106,7 +105,7 @@ async def _maybe_add_episode(
 
 
 async def update_channel(
-    channel: models.Channel, max_new_episodes: Optional[int] = None
+    channel: models.Channel, max_new_episodes: int | None = None
 ) -> int:
     """Read a channel feed and store all the new added episodes.
     Return the number of episodes added.
