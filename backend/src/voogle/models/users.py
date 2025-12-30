@@ -3,7 +3,6 @@
 # All rights reserved.
 
 """Authentication related models"""
-from typing import ClassVar
 
 import ormar
 
@@ -19,12 +18,13 @@ class User(CoreModel):
 
     """
 
-    class Meta:
-        tablename = "user"
-        constraints: ClassVar = [
+    ormar_config = ormar.OrmarConfig(
+        tablename="user",
+        constraints=[
             ormar.UniqueColumns("email"),
             ormar.UniqueColumns("username"),
-        ]
+        ],
+    )
 
     email = ormar.String(max_length=400)
     username = ormar.String(max_length=40)

@@ -21,11 +21,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from voogle.models.media import Episode
-from voogle.vector import get_client
 from voogle.settings import settings
+from voogle.vector import get_client
 
 
-async def reset_embeddings():
+async def reset_embeddings() -> None:
     """Clear embeddings from database and vector store."""
     print("🔄 Resetting embeddings...")
     print(f"Environment: {settings.environment}")
@@ -56,7 +56,7 @@ async def reset_embeddings():
             client.delete_collection("vectordb")
             print("   ✓ Deleted 'vectordb' collection")
         else:
-            print("   ℹ No 'vectordb' collection found (already clean)")
+            print("   (i) No 'vectordb' collection found (already clean)")
     except Exception as e:
         print(f"   ⚠ Warning: Could not delete Qdrant collection: {e}")
 

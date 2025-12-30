@@ -8,7 +8,7 @@ related episodes).
 
 """
 import enum
-from typing import ClassVar, Optional
+from typing import Optional
 
 import ormar
 
@@ -31,9 +31,10 @@ class Channel(base.CoreModel):
     The field feed (that contains the feed url) is unique.
     """
 
-    class Meta:
-        tablename = "channels"
-        constraints: ClassVar = [ormar.UniqueColumns("feed")]
+    ormar_config = ormar.OrmarConfig(
+        tablename="channels",
+        constraints=[ormar.UniqueColumns("feed")],
+    )
 
     title = ormar.String(max_length=250)
     feed = ormar.String(max_length=250)
@@ -52,12 +53,13 @@ class Episode(base.CoreModel):
     An episode always belongs to a Channel. If the channel is removed,
     all its episodes will be automatically removed too.
 
-    The field fieield is unique.
+    The field url is unique.
     """
 
-    class Meta:
-        tablename = "episodes"
-        constraints: ClassVar = [ormar.UniqueColumns("url")]
+    ormar_config = ormar.OrmarConfig(
+        tablename="episodes",
+        constraints=[ormar.UniqueColumns("url")],
+    )
 
     channel: Optional[Channel] = ormar.ForeignKey(
         Channel,

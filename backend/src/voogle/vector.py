@@ -78,9 +78,15 @@ def create_collection(
     name: str,
     vector_dimension: int,
 ) -> None:
-    """Create a collection in the vector database with the given name."""
+    """Create a collection in the vector database with the given name.
+
+    If the collection already exists, it is deleted first.
+    """
     logger.info(f"creating qdrant collection {name} with dimension={vector_dimension}")
-    client.recreate_collection(
+    if client.collection_exists(name):
+        logger.info(f"collection {name} exists, deleting it first")
+        client.delete_collection(name)
+    client.create_collection(
         collection_name=name,
         vectors_config=models.VectorParams(
             size=vector_dimension,  # type: ignore[arg-type]

@@ -1,43 +1,77 @@
-name: Voogle back-end tests
+name: Voogle CI
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  CI_IMAGE: ghcr.io/${{ github.repository }}-ci:latest
 
 jobs:
-  build:
-
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10"]
-
+    permissions:
+      packages: read
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        working-directory: ./backend
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull CI image (or build if not exists)
         run: |
-          sudo apt-get update
-          # TEMPORARY: FFmpeg dev libraries only needed for PyAV 10.0.0 (no prebuilt wheels)
-          # Remove these after upgrading to PyAV >=12.x: pkg-config, libavformat-dev,
-          # libavcodec-dev, libavdevice-dev, libavutil-dev, libswscale-dev,
-          # libswresample-dev, libavfilter-dev
-          sudo apt-get install -y ffmpeg pkg-config \
-            libavformat-dev libavcodec-dev libavdevice-dev \
-            libavutil-dev libswscale-dev libswresample-dev libavfilter-dev
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install .[dev]
-      - name: Lint with ruff
-        working-directory: ./backend
+          docker pull ${{ env.CI_IMAGE }} || \
+          docker build -t ${{ env.CI_IMAGE }} -f tests/dockerfile .
+
+      - name: Run ruff
         run: |
-          ruff check --target-version=py39 .
-      - name: Test with pytest
-        working-directory: ./backend
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace/backend \
+            ${{ env.CI_IMAGE }} \
+            ruff check .
+
+      - name: Run pyright
         run: |
-          pytest
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace/backend \
+            ${{ env.CI_IMAGE }} \
+            pyright src/
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull CI image (or build if not exists)
+        run: |
+          docker pull ${{ env.CI_IMAGE }} || \
+          docker build -t ${{ env.CI_IMAGE }} -f tests/dockerfile .
+
+      - name: Run tests
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e VOOGLE_ENVIRONMENT=test \
+            -e VOOGLE_DATA_DIR=/tmp/voogle-test \
+            -e PYTHONPATH=/workspace/tests \
+            ${{ env.CI_IMAGE }} \
+            pytest tests/ -v --ignore=tests/e2e

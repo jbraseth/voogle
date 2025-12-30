@@ -1,0 +1,66 @@
+name: Build CI Image
+
+on:
+  # Build on PRs that touch image-related files (validates before merge)
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/dockerfile'
+      - 'tests/requirements.txt'
+      - 'backend/requirements.txt'
+      - 'backend/pyproject.toml'
+      - 'backend/setup.cfg'
+      - '.github/workflows/build-ci-image.yml'
+
+  # Push to registry after merge to main
+  push:
+    branches: [main]
+    paths:
+      - 'tests/dockerfile'
+      - 'tests/requirements.txt'
+      - 'backend/requirements.txt'
+      - 'backend/pyproject.toml'
+      - 'backend/setup.cfg'
+      - '.github/workflows/build-ci-image.yml'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-ci
+
+jobs:
+  build:
+    name: Build CI Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.event_name == 'push' }}
+            type=sha,prefix=
+
+      - name: Build and push CI image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: tests/dockerfile
+          # Only push on main branch (not PRs)
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+          tags: ${{ steps.meta.outputs.tags }}

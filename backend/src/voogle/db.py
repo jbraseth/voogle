@@ -2,11 +2,13 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Database configuration. In this module, the events that will
-connect the database on app startup and disconnect it on shutdown will
-be configured.
+"""Database configuration. In this module, the lifespan context manager
+handles database connection on app startup and disconnection on shutdown.
 
 """
+
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import databases
 import sqlalchemy
@@ -37,21 +39,12 @@ database = databases.Database(get_db_url())
 metadata = sqlalchemy.MetaData()
 
 
-def setup_database(app: FastAPI) -> None:
-    """Configure database operations for different app events:
-    (startup, shutdown).
-
-    """
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Lifespan context manager for database connection management."""
     app.state.database = database
-
-    @app.on_event("startup")
-    async def startup() -> None:
-        database_ = app.state.database
-        if not database_.is_connected:
-            await database_.connect()
-
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
-        database_ = app.state.database
-        if database_.is_connected:
-            await database_.disconnect()
+    if not database.is_connected:
+        await database.connect()
+    yield
+    if database.is_connected:
+        await database.disconnect()

@@ -8,6 +8,19 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 ## [Unreleased]
 
+### Changed
+- **Upgraded Python from 3.9/3.10 to 3.12** (#7)
+  - Updated all Dockerfiles to use `python:3.12-slim-bookworm`
+  - Migrated ormar models from `class Meta` to `ormar_config` pattern (ormar 0.20.x breaking change)
+  - Migrated pydantic `BaseSettings` to `pydantic-settings` package (Pydantic v2 breaking change)
+  - Upgraded all dependencies to latest compatible versions
+  - Added `scripts/lint.sh` and `scripts/test.sh` for Docker-based CI
+  - Simplified GitHub Actions workflow to use new CI scripts
+
+**WHY**: Python 3.12 brings performance improvements, better error messages, and security updates. Staying on 3.9/3.10 was becoming a liability as dependencies dropped support.
+
+**REASONING**: This was a significant upgrade involving breaking changes in ormar (ORM) and pydantic (settings). The ormar 0.20 release changed the model configuration API entirely, and pydantic v2 moved BaseSettings to a separate package.
+
 ### Added
 - Claude Code context files for AI-assisted development
   - `CLAUDE.md`: Comprehensive project overview, architecture, and critical patterns
