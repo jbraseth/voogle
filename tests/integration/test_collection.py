@@ -3,13 +3,14 @@
 # All rights reserved.
 
 import pytest
-
 from voogle import collection
 
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.description("Validates default podcast channels can be read and have episodes")
+@pytest.mark.description(
+    "Validates default podcast channels can be read and have episodes"
+)
 def test_default_channels() -> None:
     channels = collection.default_channels()
     assert len(channels) > 0
@@ -20,7 +21,9 @@ def test_default_channels() -> None:
         assert len(episodes) > 0
 
 
-@pytest.mark.description("Tests channel creation, retrieval, and episode updates from RSS feeds")
+@pytest.mark.description(
+    "Tests channel creation, retrieval, and episode updates from RSS feeds"
+)
 async def test_read_channel_and_its_episodes() -> None:
     for i, podcast in enumerate(collection.default_channels()[:5]):
         created, retrieved = await collection.get_or_create_channel(podcast["url"])

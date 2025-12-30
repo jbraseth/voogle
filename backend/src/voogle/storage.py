@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-""" File storage related functions
-
-"""
+"""File storage related functions"""
 import functools
 import logging
 import pathlib

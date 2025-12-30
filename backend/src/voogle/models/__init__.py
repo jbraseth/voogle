@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Data layer. Each model correspond to a table in the database.
-
-"""
+"""Data layer. Each model correspond to a table in the database."""
 
 from .analytics import Query as Query
 from .media import Channel as Channel

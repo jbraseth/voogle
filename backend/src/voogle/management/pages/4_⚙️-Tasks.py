@@ -58,7 +58,9 @@ async def update_channels() -> None:
     st.info("This is a background task that may take some minutes.")
     if last_execution := utils.get_event("event_update_start"):
         last_execution_time = float(last_execution["time"])
-        dt = datetime.datetime.fromtimestamp(last_execution_time, tz=datetime.timezone.utc)
+        dt = datetime.datetime.fromtimestamp(
+            last_execution_time, tz=datetime.timezone.utc
+        )
         date = dt.strftime("%c")
         st.markdown(f"**Last execution**: `{date}`")
     if st.button("⚙️ Update channels", use_container_width=True):
@@ -82,7 +84,9 @@ async def transcribe_pending() -> None:
 
     if last_execution := utils.get_event("event_transcription_start"):
         last_execution_time = float(last_execution["time"])
-        dt = datetime.datetime.fromtimestamp(last_execution_time, tz=datetime.timezone.utc)
+        dt = datetime.datetime.fromtimestamp(
+            last_execution_time, tz=datetime.timezone.utc
+        )
         date = dt.strftime("%c")
         st.markdown(f"**Last execution**: `{date}`: {last_execution['info']}")
 
@@ -104,7 +108,9 @@ async def store_pending() -> None:
     )
     if last_execution := utils.get_event("event_store_start"):
         last_execution_time = float(last_execution["time"])
-        dt = datetime.datetime.fromtimestamp(last_execution_time, tz=datetime.timezone.utc)
+        dt = datetime.datetime.fromtimestamp(
+            last_execution_time, tz=datetime.timezone.utc
+        )
         date = dt.strftime("%c")
         st.markdown(f"**Last execution**: `{date}`: {last_execution['info']}")
     if st.button("💾 Start indexing process", use_container_width=True):

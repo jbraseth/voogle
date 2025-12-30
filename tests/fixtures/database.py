@@ -6,7 +6,8 @@
 
 import os
 import shutil
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 import pytest
 import sqlalchemy
@@ -28,10 +29,10 @@ def fixture_create_test_database() -> Generator[None, Any, Any]:
 
 
 @pytest.fixture(autouse=True, scope="session", name="clean_environment")
-def fixture_clean_environment():
+def fixture_clean_environment() -> Generator[None, Any, Any]:
     yield
     data = settings.data_dir
     if "test" in str(data):
         shutil.rmtree(data, ignore_errors=True)
     else:
-        assert False, "Not using test folder as data dir"
+        raise AssertionError("Not using test folder as data dir")

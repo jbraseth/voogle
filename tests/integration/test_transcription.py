@@ -5,14 +5,15 @@
 import pathlib
 
 import pytest
-
 from voogle import transcription
 
 pytestmark = pytest.mark.integration
 
 
 @pytest.mark.skip(reason="not reliable between different versions")
-@pytest.mark.description("Tests audio transcription with Whisper, CSV storage, and retrieval")
+@pytest.mark.description(
+    "Tests audio transcription with Whisper, CSV storage, and retrieval"
+)
 def test_audio_transcription(
     jobs_mp3_path: pathlib.Path,
     jobs_csv_path: pathlib.Path,

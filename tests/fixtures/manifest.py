@@ -24,6 +24,10 @@ def fixture_streamlit_url(manifest_reader: ManifestReader) -> str:
 def fixture_voogle_url(manifest_reader: ManifestReader) -> str:
     return manifest_reader.get_if_exists_in_manifest("frontend_url")
 
+@pytest.fixture(scope="session", name="api_url")
+def fixture_api_url(manifest_reader: ManifestReader) -> str:
+    return manifest_reader.get_if_exists_in_manifest("api_url")
+
 
 @pytest.fixture(scope="session", name="voogle_credentials")
 def fixture_voogle_credentials(manifest_reader: ManifestReader) -> tuple[str, str]:

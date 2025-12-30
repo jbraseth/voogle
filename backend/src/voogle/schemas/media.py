@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-""" Media-related schemas.
-
-"""
+"""Media-related schemas."""
 from typing import Optional
 
 from pydantic import BaseModel

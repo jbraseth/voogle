@@ -2,8 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Main voogle data tasks
-"""
+"""Main voogle data tasks"""
 
 import logging
 import random
@@ -51,7 +50,8 @@ async def transcribe_episodes(
     channel_info = f"channel {channel.pk}: {channel.title}" if channel else ""
     logger.info(f"transcribing episodes from last {num_days} days. {channel_info}")
     qs = models.Episode.objects.filter(
-        transcribed=False, date__gt=datetime.now(timezone.utc) - timedelta(days=num_days)
+        transcribed=False,
+        date__gt=datetime.now(timezone.utc) - timedelta(days=num_days),
     )
     if channel:
         qs = qs.filter(channel=channel)

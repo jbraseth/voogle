@@ -4,5 +4,4 @@
 """Utility mixins for Voogle page objects."""
 
 
-class VoogleUtils:
-    ...
+class VoogleUtils: ...

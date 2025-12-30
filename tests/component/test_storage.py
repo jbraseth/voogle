@@ -3,7 +3,6 @@
 # All rights reserved.
 
 import pytest
-
 from voogle import models, storage
 
 pytestmark = pytest.mark.component

@@ -2,8 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-""" User-related schemas.
-"""
+"""User-related schemas."""
 
 from pydantic import BaseModel
 

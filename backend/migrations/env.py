@@ -15,7 +15,6 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-
 from voogle import db
 from voogle.models import analytics, media, users  # type: ignore  # noqa: F401
 

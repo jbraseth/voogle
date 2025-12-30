@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Generate episode transcriptions
-
-"""
+"""Generate episode transcriptions"""
 import csv
 import functools
 import logging

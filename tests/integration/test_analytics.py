@@ -3,14 +3,15 @@
 # All rights reserved.
 
 import pytest
-
 from starlette.testclient import TestClient
 from voogle.routers import media
 
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.description("Stores 100 queries and validates paginated query history retrieval")
+@pytest.mark.description(
+    "Stores 100 queries and validates paginated query history retrieval"
+)
 async def test_queries(auth_client: TestClient) -> None:
     for i in range(100):
         await media.store_user_query(f"User searched for {i}")

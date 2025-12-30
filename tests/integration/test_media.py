@@ -5,7 +5,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from starlette.testclient import TestClient
 from voogle import models
 
@@ -21,8 +20,12 @@ def test_crud_episodes(channel: models.media.Channel, auth_client: TestClient) -
     assert response["items"][0]["title"]
 
 
-@pytest.mark.description("Full CRUD operations for channels: list, filter, get, delete, and create")
-async def test_crud_channels(channel: models.media.Channel, auth_client: TestClient) -> None:
+@pytest.mark.description(
+    "Full CRUD operations for channels: list, filter, get, delete, and create"
+)
+async def test_crud_channels(
+    channel: models.media.Channel, auth_client: TestClient
+) -> None:
     # list all channels
     response = auth_client.get("/media/channel").json()
     assert response["total"] == 1
@@ -32,9 +35,7 @@ async def test_crud_channels(channel: models.media.Channel, auth_client: TestCli
     assert response["items"][0]["image"]
     # filter channels by title
     title = str(channel.title)
-    response = auth_client.get(
-        f"/media/channel?title__icontains={title[:10]}"
-    ).json()
+    response = auth_client.get(f"/media/channel?title__icontains={title[:10]}").json()
     assert response["total"] == 1
     cid = response["items"][0]["id"]
     assert "pk" not in response["items"][0]

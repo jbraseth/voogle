@@ -102,7 +102,6 @@ def ensure_collection(
     if not found:
         logger.info("collection not found, creating it")
         create_collection(client, collection_name, vector_dimension)
-    return
 
 
 def _gen_metadata(fragment: embedding.Fragment, episode: Episode) -> dict:
@@ -131,10 +130,11 @@ async def add_episode(
     """
     if episode.embeddings:
         raise ValueError(f"Episode {episode.pk} already stored in the vector db")
-    client.upload_records(  # type: ignore[attr-defined]
+    # Use upsert with PointStruct (upload_records deprecated in newer qdrant)
+    client.upsert(
         collection_name=collection_name,
-        records=[
-            models.Record(
+        points=[
+            models.PointStruct(
                 id=str(uuid.uuid4()),
                 vector=emb.tolist(),
                 payload=_gen_metadata(fragment, episode),
@@ -155,10 +155,11 @@ def search(
     query_filter: Optional[models.Filter] = None,
 ) -> list[QueryResponse]:
     """Perform a query with the given vector database and embeddings."""
-    results = client.search(  # type: ignore[attr-defined]
+    # Use query_points (search is deprecated in newer qdrant-client)
+    results = client.query_points(
         collection_name=collection_name,
-        query_vector=query_embedding[0].tolist(),
+        query=query_embedding[0].tolist(),
         query_filter=query_filter,
         limit=num_results,
-    )
+    ).points
     return [QueryResponse(score=r.score, **r.payload) for r in results]  # type: ignore[arg-type,call-arg]

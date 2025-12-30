@@ -2,23 +2,24 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-import pytest
+from collections.abc import Generator
 from unittest.mock import Mock, patch
 
+import pytest
 from voogle import embedding, models, storage, transcription, vector
 
 pytestmark = pytest.mark.component
 
 
-@pytest.fixture
-def local_provider() -> embedding.LocalEmbeddingsProvider:
+@pytest.fixture(name="local_provider")
+def fixture_local_provider() -> embedding.LocalEmbeddingsProvider:
     """Fixture for local embeddings provider."""
     model = embedding.load_embeddings_model(embedding.DEFAULT_EMBEDDINGS_MODEL)
     return embedding.LocalEmbeddingsProvider(model)
 
 
-@pytest.fixture
-def mock_openai_provider() -> embedding.OpenAIEmbeddingsProvider:
+@pytest.fixture(name="mock_openai_provider")
+def fixture_mock_openai_provider() -> Generator[embedding.OpenAIEmbeddingsProvider, None, None]:
     """Fixture for mocked OpenAI provider."""
     with patch("openai.OpenAI") as mock_client:
         # Mock response for batch of embeddings

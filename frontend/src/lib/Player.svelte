@@ -29,7 +29,7 @@
     isPlaying.set(true)
   }
 </script>
-<div class="card w-full h-80 sm:h-64 lg:h-40 bg-base-100 shadow-xl image-full">
+<div class="card w-full h-80 sm:h-64 lg:h-40 bg-base-100 shadow-xl image-full" data-testid="audio-player-active">
   <img class="object-cover w-full h-full" src="{channel.image}"  />
   <div class="grid grid-cols-2 lg:grid-cols-3 card-body">
     <div class="col-span-2 flex flex-col">
@@ -61,6 +61,7 @@
 	on:canplay={canplay}
 	on:canplaythrough={canplay}
 	on:durationchange={durationChanged}
+	data-testid="audio-element"
 	/>
     </div>
   </div>

@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Authentication related models
-
-"""
+"""Authentication related models"""
 from typing import ClassVar
 
 import ormar

@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""RQ worker configuration
-
-"""
+"""RQ worker configuration"""
 import logging
 
 import redis

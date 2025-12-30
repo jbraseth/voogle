@@ -37,26 +37,34 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
     ln -sf /usr/bin/python3.10 /usr/bin/python
 
 # Install application dependencies first (for better caching)
-COPY ./requirements.txt /backend/requirements.txt
+COPY ./backend/requirements.txt /backend/requirements.txt
 
 # TEMPORARY HACK: Install old Cython and build PyAV without isolation
 # PyAV 10.0.0 has Cython compilation errors with modern Cython
+# Install CPU-only torch LAST to override any CUDA deps from requirements
 RUN python3 -m pip install "Cython<3.0" && \
     python3 -m pip install --no-build-isolation --no-cache-dir av==10.0.0 && \
-    python3 -m pip install --no-cache-dir -r /backend/requirements.txt
+    python3 -m pip install --no-cache-dir -r /backend/requirements.txt && \
+    python3 -m pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
+    python3 -m pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Install test dependencies
-COPY ./requirements-test.txt /backend/requirements-test.txt
-RUN python3 -m pip install --no-cache-dir -r /backend/requirements-test.txt
+# Downgrade httpx after test deps to fix starlette TestClient compatibility
+COPY ./tests/requirements.txt /backend/requirements-test.txt
+RUN python3 -m pip install --no-cache-dir -r /backend/requirements-test.txt && \
+    python3 -m pip install --no-cache-dir "httpx==0.25.0"
 
 # Install Playwright browsers (this is the heavy part)
 RUN playwright install --with-deps chromium
 
 # Copy application code
-COPY . /backend
+COPY ./backend /backend
 
 # Install application in editable mode for tests
-RUN pip install -e .[dev]
+WORKDIR /backend
+RUN pip install -e .[dev] && \
+    pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
+    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Default command runs tests
 CMD ["pytest", "-v"]

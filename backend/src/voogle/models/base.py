@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Classes used as a parent for other app models.
-
-"""
+"""Classes used as a parent for other app models."""
 import uuid
 from datetime import datetime
 
