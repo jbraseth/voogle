@@ -7,6 +7,7 @@ import typing
 from datetime import timedelta
 
 import streamlit as st
+
 from voogle import auth
 
 st.set_page_config(page_title="Voogle", page_icon="🎧")
@@ -25,7 +26,7 @@ async def _login(username: str, password: str) -> typing.Optional[str]:
         )
 
 
-async def main():
+async def main() -> None:
     global SHOW_LOGIN_FORM
     if USERNAME_KEY in st.session_state and TOKEN_KEY in st.session_state:
         SHOW_LOGIN_FORM = False

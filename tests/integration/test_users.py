@@ -2,10 +2,17 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+import pytest
+from starlette.testclient import TestClient
 from voogle.settings import settings
 
+pytestmark = pytest.mark.integration
 
-def test_signup_login(client) -> None:  # type: ignore
+
+@pytest.mark.description(
+    "Tests user signup with validation and login with JWT token generation"
+)
+def test_signup_login(client: TestClient) -> None:
     data = {
         "username": "johndoe",
         "email": "johndoe@acme.com",
@@ -46,7 +53,10 @@ def test_signup_login(client) -> None:  # type: ignore
     assert response.status_code == 401
 
 
-async def test_me(client, auth_client) -> None:  # type: ignore
+@pytest.mark.description(
+    "Validates /users/me endpoint returns authenticated user data and rejects unauthenticated requests"
+)
+async def test_me(client: TestClient, auth_client: TestClient) -> None:
     response = auth_client.get("/users/me/").json()
     assert response["username"] == settings.admin_username
     assert "pk" not in response

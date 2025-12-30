@@ -2,10 +2,9 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-""" Analytics-related schemas.
-
-"""
+"""Analytics-related schemas."""
 from pydantic import BaseModel
+
 from voogle.models.analytics import Query
 
 QueryOut = Query.get_pydantic(exclude={"pk"})

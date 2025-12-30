@@ -14,7 +14,7 @@ from voogle.models import base
 class Query(base.CoreModel):
     """A query performed by a user. Table queries"""
 
-    class Meta(ormar.ModelMeta):
+    class Meta:
         tablename = "queries"
 
     text = ormar.String(max_length=150)

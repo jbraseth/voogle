@@ -2,13 +2,11 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""RQ worker configuration
-
-"""
+"""RQ worker configuration"""
 import logging
 
-import redis  # type: ignore
-from rq import Worker  # type: ignore
+import redis
+from rq import Worker
 
 from voogle import settings
 

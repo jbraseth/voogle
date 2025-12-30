@@ -18,8 +18,8 @@ import pathlib
 from typing import Optional
 
 import pydantic
-import redis  # type: ignore
-from rq import Queue  # type: ignore
+import redis
+from rq import Queue
 
 CODE_DIR = pathlib.Path(__file__).parent
 BACKEND_DIR = CODE_DIR.parent.parent
@@ -33,7 +33,7 @@ class Environment(enum.Enum):
     production = "production"
 
 
-class Settings(pydantic.BaseSettings):
+class Settings(pydantic.BaseSettings):  # type: ignore[attr-defined]
     # this default variables will be used when running the system
     # without any additional env var (usually, we will want them to be
     # synchronized with the ones in infra/dev/.env.dev)

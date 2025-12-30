@@ -8,9 +8,9 @@ Everything can be considered an utility, so let's try to keep this as
 small as possible.
 
 """
-import typing
 import re
 import time
+import typing
 import unicodedata
 
 from voogle import settings
@@ -20,8 +20,8 @@ def slugify(value: str) -> str:
     value = (
         unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
     )
-    value = re.sub("[^\w\s-]", "", value).strip().lower()  # noqa
-    return re.sub("[-\s]+", "-", value)  # noqa
+    value = re.sub(r"[^\w\s-]", "", value).strip().lower()
+    return re.sub(r"[-\s]+", "-", value)
 
 
 def log_event(key: str, info: str) -> None:
@@ -33,5 +33,7 @@ def get_event(key: str) -> typing.Optional[dict]:
     redis = settings.settings.redis_cache
     event = redis.get(key)
     if event:
-        return {"time": event.split("|")[0], "info": event.split("|")[1]}
-    return
+        event_str: str = event.decode("utf-8") if isinstance(event, bytes) else event  # type: ignore[assignment]
+        parts = event_str.split("|")
+        return {"time": parts[0], "info": parts[1]}
+    return None

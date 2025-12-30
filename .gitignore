@@ -47,6 +47,7 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 pyrightconfig.json
+.venv
 
 # =============================================================================
 # Node.js / Frontend
@@ -96,6 +97,7 @@ logs/
 tmp/
 temp/
 *.tmp
+output/
 
 # =============================================================================
 # Claude
@@ -110,4 +112,4 @@ temp/
 # Project Specific
 # =============================================================================
 data/
-!backend/src/voogle/tests/data/
+data-test/

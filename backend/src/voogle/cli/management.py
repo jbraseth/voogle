@@ -9,8 +9,9 @@ Run --help to see available options.
 import argparse
 import asyncio
 import logging
-from voogle.models import users
+
 from voogle import auth, settings, transcription
+from voogle.models import users
 
 logger = logging.getLogger(__name__)
 CREATE_DEFAULT_ADMIN_USER = "create (if not exists) the default voogle admin user"
@@ -18,7 +19,7 @@ FIX_TRANSCRIBED = """fixing episodes' transcribed field if they have
 an existing transcription file"""
 
 
-async def _maybe_create_admin():
+async def _maybe_create_admin() -> None:
     username = settings.settings.admin_username
     logger.info(f"ensuring admin {username=} is created...")
     user = await auth.get_user(username)

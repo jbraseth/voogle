@@ -9,6 +9,7 @@ from typing import Optional
 import fastapi
 from fastapi_pagination import Page
 from fastapi_pagination.ext.ormar import paginate
+
 from voogle import auth, storage, tasks, transcription
 from voogle.collection import crawler
 from voogle.models import analytics, media, users
@@ -28,13 +29,13 @@ async def store_user_query(query_text: str) -> analytics.Query:
 @router.get(
     "/channel",
     summary="Get the paginated list of channels in the database",
-    response_model=Page[media_schemas.ChannelOut],  # type: ignore
+    response_model=Page[media_schemas.ChannelOut],
 )
-async def channels(  # type: ignore
+async def channels(
     pk: Optional[int] = None,
     title__icontains: Optional[str] = None,
     description__icontains: Optional[str] = None,
-):
+) -> Page[media_schemas.ChannelOut]:  # type: ignore[valid-type]
     qs = media.Channel.objects
     if pk:
         qs = qs.filter(pk=pk)
@@ -53,7 +54,7 @@ async def channels(  # type: ignore
 async def get_channel(
     channel_id: uuid.UUID,
     admin: users.User = fastapi.Depends(auth.get_current_admin_user),
-) -> media_schemas.ChannelOut:  # type: ignore
+) -> media_schemas.ChannelOut:  # type: ignore[valid-type]
     channel = await media.Channel.objects.get(id=channel_id)
     return channel
 
@@ -66,7 +67,7 @@ async def get_channel(
 async def add_channel(
     channel_in: media_schemas.ChannelIn = fastapi.Body(...),
     admin: users.User = fastapi.Depends(auth.get_current_admin_user),
-) -> media_schemas.ChannelOut:  # type: ignore
+) -> media_schemas.ChannelOut:  # type: ignore[valid-type]
     _, channel = await crawler.get_or_create_channel(channel_in.feed_url)
     return channel
 
@@ -83,8 +84,8 @@ async def delete_channel(
 @router.get(
     "/episode",
     summary="Get the paginated list of episodes",
-    response_model=Page[media_schemas.EpisodeOut],  # type: ignore
-)  # type: ignore
+    response_model=Page[media_schemas.EpisodeOut],
+)
 async def episodes(
     pk: Optional[int] = None,
     channel: Optional[uuid.UUID] = None,
@@ -93,7 +94,7 @@ async def episodes(
     title__icontains: Optional[str] = None,
     description__icontains: Optional[str] = None,
     admin: users.User = fastapi.Depends(auth.get_current_admin_user),
-):
+) -> Page[media_schemas.EpisodeOut]:  # type: ignore[valid-type]
     """Return a list with all the available episodes."""
     qs = media.Episode.objects
     if pk:
@@ -118,7 +119,7 @@ async def episodes(
 )
 async def get_episode_transcription(
     episode_id: uuid.UUID, limit: int = 100, offset: int = 0
-) -> media_schemas.Transcription:  # type: ignore
+) -> media_schemas.Transcription:
     episode = await media.Episode.objects.get(id=episode_id)
     tr = transcription.read_transcription(await storage.transcription_file(episode))
     return media_schemas.Transcription(
@@ -145,7 +146,7 @@ async def query(
     background_tasks: fastapi.BackgroundTasks,
     k: int = 6,
     channel_id: Optional[uuid.UUID] = None,
-):
+) -> list[media_schemas.QueryResponse]:
     background_tasks.add_task(store_user_query, query_text)
     output: list[media_schemas.QueryResponse] = []
     channel_pk = None
@@ -153,11 +154,15 @@ async def query(
         channel_pk = (await media.Channel.objects.get(id=channel_id)).pk
     for r in tasks.search(query_text, k, channel=channel_pk):
         episode = await media.Episode.objects.get(pk=r.episode)
+        if episode.channel is None:
+            logger.warning(f"Episode {episode.pk} has no associated channel, skipping")
+            continue
+        channel = await episode.channel.load()
         output.append(
             media_schemas.QueryResponse(
                 text=r.text,
                 episode=episode,
-                channel=await episode.channel.load(),  # type: ignore
+                channel=channel,
                 similarity=r.score,
                 start=r.start_secs,
             )

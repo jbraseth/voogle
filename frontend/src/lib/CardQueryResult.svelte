@@ -35,7 +35,7 @@
   }
 </script>
 
-<div class="flex flex-col card h-auto bg-base-100 shadow-lg py-5 px-5">
+<div class="flex flex-col card h-auto bg-base-100 shadow-lg py-5 px-5" data-testid="query-result-{result.channel.id}">
   <div class="flex flex-row ml-2">
     <div class="avatar self-center" >
       <div class="w-20 h-20 rounded-full shadow-lg">
@@ -65,7 +65,7 @@
   <div class="flex mt-5">
     <p class="font-mono text-sm">
       <span>
-	<div class="badge {bColor}">
+	<div class="badge {bColor}" data-testid="similarity-badge-{result.episode.id}">
 	  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3 mr-1">
 	    <path fill-rule="evenodd" d="M12.963 2.286a.75.75 0 00-1.071-.136 9.742 9.742 0 00-3.539 6.177A7.547 7.547 0 016.648 6.61a.75.75 0 00-1.152-.082A9 9 0 1015.68 4.534a7.46 7.46 0 01-2.717-2.248zM15.75 14.25a3.75 3.75 0 11-7.313-1.172c.628.465 1.35.81 2.133 1a5.99 5.99 0 011.925-3.545 3.75 3.75 0 013.255 3.717z" clip-rule="evenodd" />
 	  </svg>
@@ -84,7 +84,7 @@
     </p>
   </div>
   {#if result.channel.kind != "local"}
-    <button class="mt-4 btn btn-sm btn-outline" on:click={click}>
+    <button class="mt-4 btn btn-sm btn-outline" on:click={click} data-testid="play-button-{result.channel.id}">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
 	<path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 	<path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />

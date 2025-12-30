@@ -2,17 +2,16 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Main voogle data tasks
-"""
+"""Main voogle data tasks"""
 
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import qdrant_client
 import sentence_transformers
-from qdrant_client.models import Filter
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from voogle import collection, embedding, models, settings, transcription, utils, vector
 
@@ -42,7 +41,7 @@ async def update_channels() -> int:
 
 
 async def transcribe_episodes(
-    num_days: int, channel: Optional[models.Channel] = None, random_order=True
+    num_days: int, channel: Optional[models.Channel] = None, random_order: bool = True
 ) -> int:
     """Transcribe episodes, in a random order, from the last num_days
     days. Return the total number of episodes transcribed.
@@ -51,7 +50,8 @@ async def transcribe_episodes(
     channel_info = f"channel {channel.pk}: {channel.title}" if channel else ""
     logger.info(f"transcribing episodes from last {num_days} days. {channel_info}")
     qs = models.Episode.objects.filter(
-        transcribed=False, date__gt=datetime.now() - timedelta(days=num_days)
+        transcribed=False,
+        date__gt=datetime.now(timezone.utc) - timedelta(days=num_days),
     )
     if channel:
         qs = qs.filter(channel=channel)
@@ -76,7 +76,7 @@ async def store_episode_embeddings(
     """Obtain embeddings for a given episode and store them in the
     vector database.
     """
-    title = episode.title
+    title = str(episode.title)
     logger.info(f"storing embeddings for episode {title}: {episode.pk}")
     utils.log_event("event_store_start", title)
     try:
@@ -139,7 +139,12 @@ def search(
     query_filter = None
     if channel:
         query_filter = Filter(
-            **{"must": [{"key": "channel", "match": {"value": channel}}]}
+            must=[
+                FieldCondition(
+                    key="channel",
+                    match=MatchValue(value=channel),
+                )
+            ]
         )
 
     return vector.search(

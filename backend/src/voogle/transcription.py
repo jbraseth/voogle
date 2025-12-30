@@ -2,9 +2,7 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Generate episode transcriptions
-
-"""
+"""Generate episode transcriptions"""
 import csv
 import functools
 import logging
@@ -36,7 +34,7 @@ def transcribe(audio: pathlib.Path) -> Transcription:
     logger.info(f"start transcription of file {audio}")
     start_time = time.time()
     model = _get_model()
-    segments, info = model.transcribe(str(audio))
+    segments, _info = model.transcribe(str(audio))
     end_time = time.time()
     transcription = [(s.start, s.end, s.text) for s in segments]
     logger.info(f"end transcription of file {audio} in {end_time-start_time} seconds")
@@ -69,7 +67,7 @@ async def transcribe_episode(episode: media.Episode) -> pathlib.Path:
     the path of the generated transcription file.
 
     """
-    title = episode.title
+    title = str(episode.title)
     logger.info(f"transcription of episode {title}: {episode.pk}")
     utils.log_event("event_transcription_start", title)
     trfile = await storage.transcription_file(episode)

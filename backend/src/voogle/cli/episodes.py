@@ -61,7 +61,7 @@ async def _main() -> None:
     if args.transcribe_channel:
         num_days = args.transcribe_days if args.transcribe_days > 0 else 3650
         await tasks.transcribe_episodes(
-            num_days,  # type: ignore
+            num_days,
             await models.Channel.objects.get(id=args.transcribe_channel),
             random_order=False,
         )

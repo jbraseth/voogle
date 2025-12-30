@@ -7,7 +7,7 @@ filesystem.
 
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from voogle import models, storage
 
@@ -40,7 +40,7 @@ def read_local_episodes(channel: models.Channel) -> list[models.Episode]:
 
     """
     logger.info(f"reading local episodes from channel: {channel.id}: {channel.title}")
-    channel_folder = storage.LOCAL_CHANNELS_PATH / channel.local_folder
+    channel_folder = storage.LOCAL_CHANNELS_PATH / str(channel.local_folder)
     mp3_files = list(channel_folder.glob("*.mp3"))
     wav_files = list(channel_folder.glob("*.wav"))
     episodes: list[models.Episode] = []
@@ -51,7 +51,7 @@ def read_local_episodes(channel: models.Channel) -> list[models.Episode]:
             guid=uri,
             description="",
             # take date from audio file metadata
-            date=datetime.fromtimestamp(ep.stat().st_ctime),
+            date=datetime.fromtimestamp(ep.stat().st_ctime, tz=timezone.utc),
             url=uri,
             episode=-1,
             season=-1,
