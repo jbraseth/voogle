@@ -1,0 +1,35 @@
+# Copyright (c) 2022-2023 Pablo González Carrizo (unmonoqueteclea)
+# Copyright (c) 2025-2026 Voogle Contributors
+# All rights reserved.
+
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /backend
+
+# Dependencies for building packages and audio processing
+RUN apt-get update &&\
+    apt-get install --no-install-recommends -y curl ffmpeg git build-essential &&\
+    rm -rf /var/lib/apt/lists/*
+
+# Install dependencies first (cached layer)
+COPY ./requirements.txt /backend/requirements.txt
+RUN pip install -U pip &&\
+    pip install --no-cache-dir -r /backend/requirements.txt
+
+# Install package in editable mode for hot reload
+# Source code mounted at runtime via compose volumes
+COPY ./pyproject.toml ./setup.cfg /backend/
+COPY ./src /backend/src
+COPY ./bin /backend/bin
+RUN pip install -e .[dev] && chmod +x /backend/bin/entrypoint.sh
+
+EXPOSE 80
+
+# Entrypoint runs migrations and creates admin user
+ENTRYPOINT ["/backend/bin/entrypoint.sh"]
+
+# Hot reload with uvicorn --reload
+CMD ["uvicorn", "src.voogle.main:app", "--host", "0.0.0.0", "--port", "80", "--reload", "--reload-dir", "/backend/src"]

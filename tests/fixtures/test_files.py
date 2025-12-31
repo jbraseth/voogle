@@ -10,23 +10,23 @@ import pytest
 from voogle import transcription
 
 
-@pytest.fixture(name="tests_data_dir")
+@pytest.fixture(scope="session", name="tests_data_dir")
 def fixture_tests_data_dir() -> pathlib.Path:
     # Use relative path that works locally and in Docker
     return pathlib.Path("tests/test_files")
 
 
-@pytest.fixture(name="golf_csv_path")
+@pytest.fixture(scope="session", name="golf_csv_path")
 def fixture_golf_csv_path(tests_data_dir: pathlib.Path) -> pathlib.Path:
     return tests_data_dir / "golf.csv"
 
 
-@pytest.fixture(name="jobs_csv_path")
+@pytest.fixture(scope="session", name="jobs_csv_path")
 def fixture_jobs_csv_path(tests_data_dir: pathlib.Path) -> pathlib.Path:
     return tests_data_dir / "jobs.csv"
 
 
-@pytest.fixture(name="jobs_mp3_path")
+@pytest.fixture(scope="session", name="jobs_mp3_path")
 def fixture_jobs_mp3_path(tests_data_dir: pathlib.Path) -> pathlib.Path:
     return tests_data_dir / "jobs.mp3"
 

@@ -15,4 +15,4 @@ async def version() -> dict:
 
     It is the version of the Voogle Python package.
     """
-    return {"version": voogle.__version__}
+    return {"version": f"{voogle.__version__}"}

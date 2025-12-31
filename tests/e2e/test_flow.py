@@ -122,6 +122,7 @@ def test_voogle_search_and_playback(
     voogle_url: str,
     test_data: dict,
     console_monitor: dict,
+    e2e_seed_data: None,
 ):
     """Test complete Voogle flow: search query returns results and audio plays.
 
@@ -304,6 +305,7 @@ def test_channel_type_playback(
     voogle_url: str,
     console_monitor: dict,
     config: dict,
+    e2e_seed_data: None,
 ) -> None:
     """Parametrized test for both podcast and local channel playback.
 

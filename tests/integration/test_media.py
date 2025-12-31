@@ -2,11 +2,12 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 from starlette.testclient import TestClient
-from voogle import models
+from voogle import embedding, models, storage, transcription, vector
 
 pytestmark = pytest.mark.integration
 
@@ -67,3 +68,60 @@ async def test_crud_channels(
         response = auth_client.post("/media/channel", json=data).json()
         assert response["id"]
         assert "pk" not in response
+
+
+@pytest.mark.description("Query endpoint returns results with media_url field")
+async def test_query_endpoint(
+    aiolib: Any,  # noqa: ANN401
+    fake_channel: models.media.Channel,
+    fake_episode: models.media.Episode,
+    client: TestClient,
+) -> None:
+    """Test that the query endpoint returns properly serialized results.
+
+    This test creates embeddings inline (avoiding Redis dependency) and verifies:
+    1. Query endpoint returns valid JSON
+    2. Results include media_url field
+    3. Episode and channel data are properly serialized (no pk field exposed)
+    """
+    # Set up embeddings using configured client (same as endpoint will use)
+    provider = embedding.get_embeddings_provider()
+    qdrant_client = vector.get_configured_client()
+    collection_name = vector.DEFAULT_COLLECTION
+
+    vector.ensure_collection(
+        qdrant_client, collection_name, provider.get_embedding_dimension()
+    )
+
+    # Calculate and store embeddings
+    tr = transcription.read_transcription(await storage.transcription_file(fake_episode))
+    embs, fragments = embedding._transcription_embeddings(
+        tr, provider, embedding.DEFAULT_FRAGMENT_WORDS
+    )
+    await vector.add_episode(
+        fake_episode, qdrant_client, embs, collection_name, fragments
+    )
+
+    response = client.get("/media/query?query_text=golf&n_results=5")
+    assert response.status_code == 200
+
+    results = response.json()
+    assert isinstance(results, list)
+    assert len(results) > 0
+
+    # Verify result structure
+    result = results[0]
+    assert "text" in result
+    assert "episode" in result
+    assert "channel" in result
+    assert "similarity" in result
+    assert "start" in result
+    assert "media_url" in result
+
+    # Verify media_url is a string (either external URL or /local/ path)
+    assert isinstance(result["media_url"], str)
+    assert len(result["media_url"]) > 0
+
+    # Verify pk is not exposed
+    assert "pk" not in result["episode"]
+    assert "pk" not in result["channel"]

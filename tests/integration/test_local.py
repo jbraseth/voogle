@@ -8,7 +8,6 @@ from typing import Any
 
 import pytest
 from starlette.testclient import TestClient
-
 from voogle import models, storage
 from voogle.models.media import ChannelKind
 
@@ -85,19 +84,28 @@ def test_local_media_route_404_for_missing_file(client: TestClient) -> None:
 def test_local_media_route_blocks_path_traversal(client: TestClient) -> None:
     """Test that path traversal attempts are blocked.
 
-    Note: Most path traversal attempts are normalized by the HTTP layer
-    (e.g., /local/channel/../x becomes /local/x) before reaching handlers.
-    We test that any requests that do reach our handler with dangerous
-    paths are rejected.
+    Note: Most traversal patterns (e.g., /../) are normalized by the HTTP
+    layer before reaching our handler. We verify that:
+    1. Normalized requests return 404 (route not found)
+    2. Patterns that reach our handler are rejected with our message
     """
-    # These patterns won't be normalized by HTTP layer and will reach our handler
-    # The %2F encoding is decoded after routing, so these test our path validation
-    response = client.get("/local/some-channel/normal-file.mp3")
+    # Direct traversal gets normalized by HTTP layer to /etc/passwd
+    # which doesn't match our route, so FastAPI returns generic 404
+    response = client.get("/local/channel/../../../etc/passwd")
+    assert response.status_code == 404
+
+    # URL-encoded slashes in filename reach our handler and get validated
+    response = client.get("/local/channel/..%2F..%2F..%2Fetc%2Fpasswd")
     assert response.status_code == 404
     assert response.json()["detail"] == "File not found"
 
-    # Test that channel names with dots don't create issues
-    response = client.get("/local/channel.name/file.mp3")
+    # Double-encoded stays as literal text, reaches handler, file not found
+    response = client.get("/local/channel/..%252F..%252Fetc%252Fpasswd")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "File not found"
+
+    # Non-existent channel with suspicious filename
+    response = client.get("/local/fake-channel/etc/passwd")
     assert response.status_code == 404
     assert response.json()["detail"] == "File not found"
 

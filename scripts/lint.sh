@@ -26,12 +26,18 @@ if [[ "$1" == "--fix" ]]; then
 fi
 
 echo "Building test image (used for linting)..."
-docker build -t voogle-test -f tests/dockerfile --target test .
+docker build -t voogle-test -f tests/dockerfile .
 
 echo "Running ruff..."
-docker run --rm voogle-test ruff check $FIX_FLAG .
+docker run --rm \
+    -v "$PROJECT_ROOT:/workspace" \
+    -w /workspace/backend \
+    voogle-test ruff check $FIX_FLAG .
 
 echo "Running pyright..."
-docker run --rm voogle-test pyright src/
+docker run --rm \
+    -v "$PROJECT_ROOT:/workspace" \
+    -w /workspace/backend \
+    voogle-test pyright src/
 
 echo "All linting checks passed!"

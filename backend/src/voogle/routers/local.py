@@ -2,6 +2,8 @@
 # All rights reserved.
 
 """Router for serving local media files."""
+import os
+
 import fastapi
 from fastapi.responses import FileResponse
 
@@ -41,7 +43,7 @@ async def serve_local_media(channel: str, filename: str) -> FileResponse:
             status_code=404, detail="File not found"
         ) from err
 
-    if not str(resolved).startswith(str(media_resolved) + "/"):
+    if not str(resolved).startswith(str(media_resolved) + os.sep):
         raise fastapi.HTTPException(status_code=404, detail="File not found")
 
     if not resolved.is_file():

@@ -35,7 +35,6 @@ class Environment(enum.Enum):
 
 
 class Settings(BaseSettings):
-    model_config = {"env_prefix": "VOOGLE_"}
 
     # this default variables will be used when running the system
     # without any additional env var (usually, we will want them to be

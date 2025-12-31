@@ -17,20 +17,24 @@ from voogle.settings import settings
 
 @pytest.fixture(autouse=True, name="create_test_database")
 def fixture_create_test_database() -> Generator[None, Any, Any]:
-    """Automatically create the test database and remove it at the end."""
-    # ensure the correct tests env var exists
+    """Automatically create a fresh test database for each test."""
     assert os.environ["ENVIRONMENT"] == "test"
     engine = sqlalchemy.create_engine(
         db.get_db_url(), connect_args={"check_same_thread": False}
     )
+    # Drop first to ensure clean slate (handles --keep from previous run)
+    db.metadata.drop_all(engine)
     db.metadata.create_all(engine)
     yield
-    db.metadata.drop_all(engine)
+    if not pytest.keep_fixtures:
+        db.metadata.drop_all(engine)
 
 
 @pytest.fixture(autouse=True, scope="session", name="clean_environment")
 def fixture_clean_environment() -> Generator[None, Any, Any]:
     yield
+    if pytest.keep_fixtures:
+        return
     data = settings.data_dir
     if "test" in str(data):
         shutil.rmtree(data, ignore_errors=True)

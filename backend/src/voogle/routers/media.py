@@ -167,8 +167,8 @@ async def query(
         output.append(
             media_schemas.QueryResponse(
                 text=r.text,
-                episode=episode,
-                channel=channel,
+                episode=episode.model_dump(exclude={"pk", "channel"}),
+                channel=channel.model_dump(exclude={"pk", "episodes"}),
                 similarity=r.score,
                 start=r.start_secs,
                 media_url=media_url,
