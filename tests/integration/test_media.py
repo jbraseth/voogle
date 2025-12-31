@@ -2,7 +2,6 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -72,7 +71,6 @@ async def test_crud_channels(
 
 @pytest.mark.description("Query endpoint returns results with media_url field")
 async def test_query_endpoint(
-    aiolib: Any,  # noqa: ANN401
     fake_channel: models.media.Channel,
     fake_episode: models.media.Episode,
     client: TestClient,

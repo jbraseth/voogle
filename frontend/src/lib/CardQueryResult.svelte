@@ -25,6 +25,7 @@
   $: episode = result.episode.episode;
   $: bColor = badgeColor(result);
   $: edate = new Date(result.episode.date);
+  $: isLocal = result.media_url && result.media_url.startsWith('/local/');
 
   function click(){
     dispatch('click', {
@@ -51,6 +52,9 @@
 	{result.episode.title}
 	{#if episode != -1}
 	  <span class="badge badge-sm badge-outline">Episode {episode}</span>
+	{/if}
+	{#if isLocal}
+	  <span class="badge badge-sm badge-info" data-testid="local-badge">LOCAL</span>
 	{/if}
       </p>
       <div class="flex flex-row">
