@@ -9,6 +9,24 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Added
+- **Refresh episode URL capability** (#24)
+  - New `backend/src/voogle/collection/url_health.py` module for URL validation and refresh
+  - `check_url()`: HEAD request with timeout and comprehensive error handling
+  - `check_episode_url()`, `check_channel_urls()`, `check_all_broken_urls()`: Batch URL checking
+  - `find_episode_in_rss()`: Match episodes by GUID (preferred) or title (fallback)
+  - `find_updated_url()`, `preview_channel_refresh()`, `apply_url_refresh()`: URL refresh workflow
+  - Streamlit admin UI in Media page with 3 sections:
+    - "Detect Broken URLs": Scan all episodes and show broken ones
+    - "Preview URL Refresh": Show old/new URLs before applying
+    - "Apply URL Refresh": Update URLs with confirmation
+  - Rate limiting (0.5s delay between requests) to avoid CDN rate limits
+  - Audit logging of URL changes (old URL, new URL) for rollback capability
+  - Preserves transcription and embeddings status during URL refresh
+
+**WHY**: Podcast hosts sometimes change CDNs or file locations, causing episode URLs to 404. Previously this required deleting the episode and losing transcription/embedding work. Now admins can detect and fix broken URLs while preserving all processing work.
+
+**REASONING**: Safe by default - all changes require explicit admin action with preview. HEAD requests minimize bandwidth. GUID-first matching is stable; title fallback handles GUID changes. No automatic refresh to prevent unintended changes.
+
 - **Configurable chunking strategy per channel** (#19)
   - New `ChunkingConfig` dataclass with `chunk_size_words`, `chunk_overlap_words`, `min_chunk_length_words`
   - YAML config file at `config/chunking.yaml` for per-channel settings
