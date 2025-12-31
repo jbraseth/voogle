@@ -16,8 +16,8 @@ def fixture_e2e_qdrant_client() -> qdrant_client.QdrantClient:
     return vector.get_client(host="localhost", port=6333)
 
 
-def _parse_csv_fragments(csv_path: Path, limit: int = 10) -> list[str]:
-    """Parse transcription CSV and return text fragments."""
+def _parse_csv_fragments(csv_path: Path, limit: int = 10) -> list[tuple[float, float, str]]:
+    """Parse transcription CSV and return (start, end, text) tuples."""
     if not csv_path.exists():
         raise FileNotFoundError(f"Test file not found: {csv_path}")
 
@@ -26,7 +26,10 @@ def _parse_csv_fragments(csv_path: Path, limit: int = 10) -> list[str]:
         for line in f:
             parts = line.strip().split("|")
             if len(parts) >= 3:
-                fragments.append(parts[2])  # text is third column
+                start = float(parts[0])
+                end = float(parts[1])
+                text = parts[2]
+                fragments.append((start, end, text))
 
     if not fragments:
         raise ValueError(f"No fragments found in {csv_path}")
@@ -72,10 +75,11 @@ def fixture_e2e_seed_data(
 
     all_points = []
     for csv_path, episode_id, channel_id, id_offset in channels_to_seed:
-        texts = _parse_csv_fragments(csv_path)
+        fragments = _parse_csv_fragments(csv_path)
+        texts = [text for _, _, text in fragments]
         embeddings = provider.encode_texts(texts)
 
-        for i, (text, emb) in enumerate(zip(texts, embeddings)):
+        for i, ((start, end, text), emb) in enumerate(zip(fragments, embeddings)):
             all_points.append(
                 qdrant_client.models.PointStruct(
                     id=id_offset + i,
@@ -84,8 +88,8 @@ def fixture_e2e_seed_data(
                         "episode": episode_id,
                         "channel": channel_id,
                         "text": text,
-                        "start_secs": int(i * 10.0),
-                        "end_secs": int((i + 1) * 10.0),
+                        "start_secs": int(start),
+                        "end_secs": int(end),
                     },
                 )
             )

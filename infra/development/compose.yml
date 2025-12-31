@@ -47,10 +47,10 @@ services:
       dockerfile: dockerfile.dev
     environment:
       # VITE environment variables for API URL configuration
-      # Browser JavaScript runs on host, so use localhost (not Docker internal hostname)
-      - VITE_API_HOST=${VITE_API_HOST:-http://localhost}
-      - VITE_API_PORT=${VITE_API_PORT:-81}
-      - VITE_API_PREFIX=${VITE_API_PREFIX:-}
+      # Empty values = use Vite proxy (relative /api URLs), avoiding CORS/PNA issues
+      - VITE_API_HOST=${VITE_API_HOST}
+      - VITE_API_PORT=${VITE_API_PORT}
+      - VITE_API_PREFIX=${VITE_API_PREFIX}
     volumes:
       - ../../frontend/src:/frontend/src
       - ../../frontend/public:/frontend/public

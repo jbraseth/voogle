@@ -38,7 +38,7 @@ else
 fi
 
 echo "Running tests..."
-echo "  JUnit XML: $ROOTDIR/tests/test_results/test-results.xml"
+echo "  JUnit XML: tests/test_results/test-results.xml"
 echo ""
 
 docker compose $COMPOSE_FILES run --rm --no-deps \

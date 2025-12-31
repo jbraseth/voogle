@@ -20,22 +20,19 @@
       queryLoading = true
       queryResults = false;
       history.replaceState(history.state, "", "?q=" + query);
-      let url = new URL(API_URL + "/media/query")
-      let params = {query_text: query, k: 6}
+      let params = new URLSearchParams({query_text: query, k: 6})
       if (selectedChannel) {
-	params.channel_id = selectedChannel
+        params.set('channel_id', selectedChannel)
       }
-      Object.keys(params).forEach(key => url.searchParams.append(key, params[key]))
-      await fetch(url).then(r => r.json()).then(data => {queryResults = data;});
+      await fetch(`${API_URL}/media/query?${params}`).then(r => r.json()).then(data => {queryResults = data;});
       queryLoading = false
     }
   }
 
   async function getChannels() {
     if($channels.length<1) {
-      let url = new URL(API_URL + "/media/channel?size=100")
       // TODO We should support more than 100 channels
-      await fetch(url).then(r => r.json()).then(data => {$channels = data.items;});
+      await fetch(`${API_URL}/media/channel?size=100`).then(r => r.json()).then(data => {$channels = data.items;});
     }
   }
 

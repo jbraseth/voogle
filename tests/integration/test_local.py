@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 from starlette.testclient import TestClient
-from voogle import models, storage
+from voogle import embedding, models, storage, transcription, vector
 from voogle.models.media import ChannelKind
 
 pytestmark = pytest.mark.integration
@@ -139,3 +139,60 @@ def test_storage_helper_functions(
     # Episode filename should have .mp3 extension
     assert episode_file.endswith(".mp3")
     assert "local-test-episode" in episode_file
+
+
+@pytest.mark.description("Query endpoint returns /local/ URLs for local channel episodes")
+async def test_query_returns_local_url_for_local_channel(
+    aiolib: Any,  # noqa: ANN401
+    local_channel: models.media.Channel,
+    local_episode: models.media.Episode,
+    jobs_csv_path: Any,  # noqa: ANN401
+    client: TestClient,
+) -> None:
+    """Test that querying a local channel episode returns a /local/ prefixed media_url.
+
+    This verifies the presentation-layer URL rewriting works correctly for local channels.
+    """
+    # Create transcription file for the episode
+    trans_file = await storage.transcription_file(local_episode)
+    trans_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Copy test transcription content
+    import shutil
+
+    shutil.copy(jobs_csv_path, trans_file)
+
+    # Set up embeddings
+    provider = embedding.get_embeddings_provider()
+    qdrant_client = vector.get_configured_client()
+    collection_name = vector.DEFAULT_COLLECTION
+
+    vector.ensure_collection(
+        qdrant_client, collection_name, provider.get_embedding_dimension()
+    )
+
+    # Calculate and store embeddings
+    tr = transcription.read_transcription(trans_file)
+    embs, fragments = embedding._transcription_embeddings(
+        tr, provider, embedding.DEFAULT_FRAGMENT_WORDS
+    )
+    await vector.add_episode(
+        local_episode, qdrant_client, embs, collection_name, fragments
+    )
+
+    # Query for content from the Steve Jobs speech
+    response = client.get("/media/query?query_text=stay+hungry&n_results=5")
+    assert response.status_code == 200
+
+    results = response.json()
+    assert len(results) > 0, "Expected query results for local episode"
+
+    # Find result from our local channel
+    local_results = [r for r in results if r["channel"]["kind"] == "local"]
+    assert len(local_results) > 0, "Expected results from local channel"
+
+    # Verify media_url starts with /local/
+    for result in local_results:
+        assert result["media_url"].startswith("/local/"), (
+            f"Expected media_url to start with '/local/', got: {result['media_url']}"
+        )
