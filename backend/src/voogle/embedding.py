@@ -21,6 +21,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from voogle import models, storage
 from voogle import transcription as tr
+from voogle.chunking import DEFAULT_CONFIG, ChunkingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -220,56 +221,89 @@ def get_embeddings_provider() -> EmbeddingsProvider:
 
 
 def calculate_fragments(
-    transcription: tr.Transcription, max_fragment_words: int
+    transcription: tr.Transcription,
+    config_or_max_words: int | ChunkingConfig = DEFAULT_CONFIG,
 ) -> list[Fragment]:
-    """Group all the words from the given transcription in fragments
-    (the minimum unit used to create embeddings) with the configured
-    max words.
+    """Group all the words from the given transcription in fragments.
 
+    Args:
+        transcription: List of (start_time, end_time, text) tuples.
+        config_or_max_words: Either a ChunkingConfig or an int for backward
+            compatibility (treated as chunk_size_words with no overlap).
+
+    Returns:
+        List of Fragment objects representing chunks of text.
     """
+    # Backward compatibility: accept int for max_fragment_words
+    if isinstance(config_or_max_words, int):
+        config = ChunkingConfig(
+            chunk_size_words=config_or_max_words,
+            chunk_overlap_words=0,
+            min_chunk_length_words=1,
+        )
+    else:
+        config = config_or_max_words
+
     fragments: list[Fragment] = []
-    fragment_start_idx = None
-    fragment_start_time = None
-    fragment_text = ""
+    # Track sentences for overlap: list of (sentence_idx, start_time, end_time, text)
+    current_sentences: list[tuple[int, float, float, str]] = []
+    current_text = ""
+
     for i, sentence in enumerate(transcription):
         sentence_start_time, sentence_end_time, text = sentence
-        if fragment_start_time is None:
-            fragment_start_time = sentence_start_time
-        if fragment_start_idx is None:
-            fragment_start_idx = i
-        fragment_text += text
-        if len(fragment_text.split(" ")) >= max_fragment_words:
-            fragments.append(
-                Fragment(
-                    start_idx=fragment_start_idx,
-                    end_idx=i,
-                    start_secs=fragment_start_time,
-                    end_secs=sentence_end_time,
-                    text=fragment_text,
-                )
-            )
-            # append previous fragment and start a new one
-            fragment_text = ""
-            fragment_start_idx, fragment_start_time = None, None
-        elif i == len(transcription) - 1:
-            fragments.append(
-                Fragment(
-                    start_idx=fragment_start_idx,
-                    end_idx=i,
-                    start_secs=fragment_start_time,
-                    end_secs=sentence_end_time,
-                    text=fragment_text,
-                )
-            )
+        current_sentences.append((i, sentence_start_time, sentence_end_time, text))
+        current_text += text
+
+        # Check if we've reached chunk size (match original: split on " ")
+        if len(current_text.split(" ")) >= config.chunk_size_words:
+            # Build fragment from current sentences
+            fragment = _build_fragment_from_sentences(current_sentences)
+            if len(fragment.text.split()) >= config.min_chunk_length_words:
+                fragments.append(fragment)
+
+            # Calculate overlap: keep sentences from the end that sum to >= overlap words
+            if config.chunk_overlap_words > 0:
+                overlap_sentences: list[tuple[int, float, float, str]] = []
+                overlap_text = ""
+                for sent in reversed(current_sentences):
+                    if len(overlap_text.split(" ")) >= config.chunk_overlap_words:
+                        break
+                    overlap_sentences.insert(0, sent)
+                    overlap_text = sent[3] + overlap_text
+                current_sentences = overlap_sentences
+                current_text = "".join(s[3] for s in current_sentences)
+            else:
+                current_sentences = []
+                current_text = ""
+
+    # Handle remaining sentences
+    if current_sentences:
+        fragment = _build_fragment_from_sentences(current_sentences)
+        if len(fragment.text.split()) >= config.min_chunk_length_words:
+            fragments.append(fragment)
+
     return fragments
+
+
+def _build_fragment_from_sentences(
+    sentences: list[tuple[int, float, float, str]]
+) -> Fragment:
+    """Build a Fragment from a list of sentence tuples (idx, start, end, text)."""
+    return Fragment(
+        start_idx=sentences[0][0],
+        end_idx=sentences[-1][0],
+        start_secs=sentences[0][1],
+        end_secs=sentences[-1][2],
+        text="".join(s[3] for s in sentences),
+    )
 
 
 def _transcription_embeddings(
     transcription: tr.Transcription,
     provider: EmbeddingsProvider,
-    max_fragment_words: int,
+    config_or_max_words: int | ChunkingConfig = DEFAULT_CONFIG,
 ) -> tuple[Embeddings, list[Fragment]]:
-    fragments = calculate_fragments(transcription, max_fragment_words)
+    fragments = calculate_fragments(transcription, config_or_max_words)
     logger.info(f"encoding {len(fragments)} fragments...")
     embeddings = provider.encode_texts([f.text for f in fragments])
     return embeddings, fragments
@@ -284,16 +318,25 @@ def text2embedding(text: str, provider: EmbeddingsProvider) -> Embeddings:
 async def episode_embeddings(
     episode: models.Episode,
     provider: EmbeddingsProvider,
-    max_fragment_words: int,
+    config_or_max_words: int | ChunkingConfig = DEFAULT_CONFIG,
 ) -> tuple[Embeddings, list[Fragment]]:
-    """Return a list of embeddings for the transcription of the given
-    episode.
+    """Return a list of embeddings for the transcription of the given episode.
 
+    Args:
+        episode: Episode to generate embeddings for.
+        provider: Embeddings provider (local or OpenAI).
+        config_or_max_words: ChunkingConfig or int for backward compatibility.
+
+    Returns:
+        Tuple of (embeddings, fragments).
+
+    Raises:
+        ValueError: If transcription file not found.
     """
     logger.info(f"obtaining embeddings for episode {episode.pk}: {episode.title}")
     trfile = await storage.transcription_file(episode)
     if not trfile.exists():
         raise ValueError(f"cannot find transcription for {episode.pk}")
     return _transcription_embeddings(
-        tr.read_transcription(trfile), provider, max_fragment_words
+        tr.read_transcription(trfile), provider, config_or_max_words
     )

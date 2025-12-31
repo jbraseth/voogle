@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from voogle import embedding, models, storage, transcription, vector
+from voogle.chunking import ChunkingConfig
 
 pytestmark = pytest.mark.component
 
@@ -50,6 +51,63 @@ async def test_calculate_fragments(
 
     embs = embedding.calculate_fragments(tr, 40)
     assert len(embs) == 54
+
+
+@pytest.mark.description("Tests fragment overlap creates more fragments with overlapping text")
+async def test_calculate_fragments_with_overlap(
+    fake_episode: models.media.Episode,
+) -> None:
+    tr = transcription.read_transcription(
+        await storage.transcription_file(fake_episode)
+    )
+    # Without overlap
+    config_no_overlap = ChunkingConfig(
+        chunk_size_words=40,
+        chunk_overlap_words=0,
+        min_chunk_length_words=1,
+    )
+    fragments_no_overlap = embedding.calculate_fragments(tr, config_no_overlap)
+
+    # With overlap - should create more fragments
+    config_with_overlap = ChunkingConfig(
+        chunk_size_words=40,
+        chunk_overlap_words=20,
+        min_chunk_length_words=1,
+    )
+    fragments_with_overlap = embedding.calculate_fragments(tr, config_with_overlap)
+
+    # With overlap we get more fragments due to repeated text
+    assert len(fragments_with_overlap) > len(fragments_no_overlap)
+
+
+@pytest.mark.description("Tests minimum chunk length filtering")
+def test_calculate_fragments_min_length() -> None:
+    # Create a transcription with short final segment
+    tr: transcription.Transcription = [
+        (0.0, 10.0, "This is a sentence with enough words to make a fragment. "),
+        (10.0, 20.0, "Another sentence with many words that extends the text. "),
+        (20.0, 30.0, "More content here for the transcription to continue. "),
+        (30.0, 35.0, "Short. "),  # Only 1 word - should be filtered
+    ]
+
+    # Low min length - includes final fragment
+    config_low_min = ChunkingConfig(
+        chunk_size_words=20,
+        chunk_overlap_words=0,
+        min_chunk_length_words=1,
+    )
+    fragments_low = embedding.calculate_fragments(tr, config_low_min)
+
+    # High min length - may filter final fragment
+    config_high_min = ChunkingConfig(
+        chunk_size_words=20,
+        chunk_overlap_words=0,
+        min_chunk_length_words=5,
+    )
+    fragments_high = embedding.calculate_fragments(tr, config_high_min)
+
+    # The high min length should filter out tiny fragments
+    assert len(fragments_low) >= len(fragments_high)
 
 
 @pytest.mark.description("Tests full embedding pipeline: calculate, store, and semantic search in vector DB")

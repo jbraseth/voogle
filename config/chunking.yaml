@@ -1,0 +1,22 @@
+# Chunking configuration for Voogle
+#
+# This file controls how transcriptions are split into fragments for embedding.
+# Each fragment becomes a searchable unit in the vector database.
+
+# Default configuration (used when no channel-specific config exists)
+default:
+  chunk_size_words: 40       # Target words per fragment
+  chunk_overlap_words: 0     # Words to overlap between fragments (sentence-level)
+  min_chunk_length_words: 10 # Minimum words to include a fragment
+
+# Per-channel overrides (keyed by channel ID)
+# Uncomment and modify to experiment with different settings:
+#
+# channels:
+#   abc123-channel-id:
+#     chunk_size_words: 60
+#     chunk_overlap_words: 10
+#
+#   xyz789-another-id:
+#     chunk_size_words: 30
+#     min_chunk_length_words: 5

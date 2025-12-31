@@ -9,6 +9,18 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Added
+- **Configurable chunking strategy per channel** (#19)
+  - New `ChunkingConfig` dataclass with `chunk_size_words`, `chunk_overlap_words`, `min_chunk_length_words`
+  - YAML config file at `config/chunking.yaml` for per-channel settings
+  - Sentence-level overlap support for context preservation across fragment boundaries
+  - CLI: `voogle-episodes --reindex-channel <id> --experiment <name>` for A/B testing
+  - CLI: `voogle-search "query" --compare default,experiment_name` for side-by-side results
+  - Experiment collections isolated in Qdrant (no cross-contamination)
+  - Validation fails loud on invalid config values
+
+**WHY**: Different podcast content types benefit from different chunking strategies. Technical content needs larger chunks for context, while conversational content needs smaller chunks for precision. This enables experimentation without code changes.
+
+**REASONING**: Config file over database for version control. Sentence-level overlap maintains natural speech boundaries. A/B testing uses separate collections to avoid mixing embeddings from different strategies.
 - **YouTube playlist ingestion adapter** (#17)
   - New `backend/src/voogle/sources/youtube_playlist.py` module
   - `scan(playlist_url)`: Scan playlist and get metadata without downloading
