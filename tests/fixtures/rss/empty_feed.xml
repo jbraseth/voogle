@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Empty Podcast</title>
+    <description>A podcast with no episodes yet</description>
+    <language>en-us</language>
+    <link>https://example.com/podcast</link>
+    <image>
+      <url>https://example.com/podcast.jpg</url>
+    </image>
+  </channel>
+</rss>

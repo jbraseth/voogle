@@ -36,6 +36,17 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 **REASONING**: Placed in `sources/` directory (separate from `collection/`) because it represents a different abstraction level. The adapter doesn't touch the database directly - it produces files + RSS that existing `collection/feed.py` can ingest. Uses yt-dlp with no cookies by default (privacy-respecting).
 
 ### Fixed
+- **Single-item RSS feeds now parse correctly** (#23)
+  - Added `_normalize_items()` helper to handle xmltodict dict vs list edge case
+  - When RSS has exactly one `<item>`, xmltodict returns a dict instead of list
+  - New helper normalizes both cases to always return a list
+  - Added 14 regression tests to prevent re-introduction
+  - RSS fixture files (single, multi, empty) for deterministic testing
+
+**WHY**: Podcasts with exactly one episode would fail to parse, breaking import for new or limited-episode feeds. This is a common edge case in RSS parsing.
+
+**REASONING**: Test-driven fix locks in the behavior permanently. The `TestXmltodictBehavior` tests document the underlying library behavior we're protecting against.
+
 - **Dev mode works natively and in Docker** (#15)
   - Vite proxy target now configurable via `VITE_BACKEND_TARGET` environment variable
   - Native dev defaults to `http://localhost:8080` (backend `make start` port)

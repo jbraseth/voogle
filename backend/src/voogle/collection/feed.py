@@ -63,6 +63,18 @@ def _episode_guid(guid: dict | str) -> str:
     return guid["#text"] if isinstance(guid, dict) else guid
 
 
+def _normalize_items(channel_info: dict) -> list[dict]:
+    """Normalize RSS items to a list.
+
+    xmltodict returns a dict for single <item>, list for multiple.
+    This normalizes both cases to always return a list.
+    """
+    items = channel_info.get("item", [])
+    if isinstance(items, dict):
+        return [items]
+    return items
+
+
 def _read_channel_feed(url: str) -> dict | None:
     try:
         channel_info = xmltodict.parse(requests.get(url).content)
@@ -101,7 +113,7 @@ def read_episodes(channel: models.Channel) -> list[models.Episode]:
     if feed is None:
         return []
     episodes: list[models.Episode] = []
-    for ep in feed["rss"]["channel"]["item"]:
+    for ep in _normalize_items(feed["rss"]["channel"]):
         if ep.get("itunes:episodeType", None) not in ["bonus", "trailer"]:
             title = ep.get("title", None)
             if title:
