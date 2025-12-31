@@ -17,6 +17,10 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
+# Skip all tests in this module if yt-dlp is not installed
+# (CI image may not have it until PR is merged)
+pytest.importorskip("yt_dlp", reason="yt-dlp not installed")
+
 from voogle.sources.youtube_playlist import (
     DownloadResult,
     DownloadStatus,
