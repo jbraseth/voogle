@@ -163,9 +163,10 @@ async def test_query_returns_local_url_for_local_channel(
     shutil.copy(jobs_csv_path, trans_file)
 
     # Set up embeddings
+    from voogle import settings
     provider = embedding.get_embeddings_provider()
     qdrant_client = vector.get_configured_client()
-    collection_name = vector.DEFAULT_COLLECTION
+    collection_name = vector.get_collection_name(settings.settings.embeddings_provider)
 
     vector.ensure_collection(
         qdrant_client, collection_name, provider.get_embedding_dimension()

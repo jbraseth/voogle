@@ -3,7 +3,8 @@
 
 """Authentication utilities for e2e tests."""
 
-from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 
 def login_to_management(

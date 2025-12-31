@@ -22,7 +22,7 @@ The tests are parametrized to cover both:
 import httpx
 import pytest
 from e2e.pages.voogle import Voogle
-from playwright.sync_api import Page, expect
+from playwright.sync_api import ConsoleMessage, Error, Page, expect
 
 pytestmark = pytest.mark.e2e
 
@@ -95,7 +95,7 @@ def fixture_console_monitor(page: Page) -> dict:
     console_errors: list[dict] = []
     page_errors: list[str] = []
 
-    def on_console(msg):
+    def on_console(msg: ConsoleMessage) -> None:
         console_messages.append(
             {"type": msg.type, "text": msg.text, "location": msg.location}
         )
@@ -104,7 +104,7 @@ def fixture_console_monitor(page: Page) -> dict:
                 {"type": msg.type, "text": msg.text, "location": msg.location}
             )
 
-    def on_page_error(error):
+    def on_page_error(error: Error) -> None:
         page_errors.append(str(error))
 
     page.on("console", on_console)
@@ -123,7 +123,7 @@ def test_voogle_search_and_playback(
     test_data: dict,
     console_monitor: dict,
     e2e_seed_data: None,
-):
+) -> None:
     """Test complete Voogle flow: search query returns results and audio plays.
 
     This test verifies the PRIMARY user flow:
@@ -243,7 +243,7 @@ def test_home_page_loads(
     management_page: Page,
     voogle_url: str,
     console_monitor: dict,
-):
+) -> None:
     """Smoke test: verify home page loads without errors.
 
     This is a simpler test that doesn't require seeded data.
@@ -271,7 +271,7 @@ def test_query_page_loads(
     management_page: Page,
     voogle_url: str,
     console_monitor: dict,
-):
+) -> None:
     """Smoke test: verify query page loads and search input is visible.
 
     This test validates the query page UI without requiring seeded data.

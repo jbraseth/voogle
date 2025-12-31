@@ -85,9 +85,10 @@ async def test_query_endpoint(
     3. Episode and channel data are properly serialized (no pk field exposed)
     """
     # Set up embeddings using configured client (same as endpoint will use)
+    from voogle import settings
     provider = embedding.get_embeddings_provider()
     qdrant_client = vector.get_configured_client()
-    collection_name = vector.DEFAULT_COLLECTION
+    collection_name = vector.get_collection_name(settings.settings.embeddings_provider)
 
     vector.ensure_collection(
         qdrant_client, collection_name, provider.get_embedding_dimension()

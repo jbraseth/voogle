@@ -54,6 +54,6 @@ jobs:
             -w /workspace \
             -e VOOGLE_ENVIRONMENT=test \
             -e VOOGLE_DATA_DIR=/tmp/voogle-test \
-            -e PYTHONPATH=/workspace/tests \
+            -e PYTHONPATH=/workspace/tests:/workspace/backend/src \
             ${{ env.CI_IMAGE }} \
             pytest tests/ -v --ignore=tests/e2e
