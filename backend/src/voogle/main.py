@@ -42,5 +42,6 @@ app.include_router(routers.users.router)
 app.include_router(routers.media.router)
 app.include_router(routers.analytics.router)
 app.include_router(routers.local.router)
+app.include_router(routers.assistant.router)
 
 add_pagination(app)

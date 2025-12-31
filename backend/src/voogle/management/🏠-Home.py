@@ -4,12 +4,21 @@
 
 import streamlit as st
 
-from voogle import __version__
+from voogle import __version__, settings
 from voogle.management import utils
 
 st.set_page_config(page_title="Voogle", page_icon="🎧")
 st.title("🎧 Voogle Management Dashboard")
 authenticated = utils.login_message(st.session_state)  # type: ignore[arg-type]
+
+# SECURITY WARNING: Local Assistant is enabled
+if settings.settings.local_assistant_enabled:
+    st.error(
+        "**SECURITY WARNING**: Local Assistant is ENABLED\n\n"
+        "The `/assistant/answer_local` endpoint is accessible. This feature shells out to "
+        "CLI tools and should ONLY be used on trusted local machines.\n\n"
+        "Set `LOCAL_ASSISTANT_ENABLED=false` to disable."
+    )
 
 st.markdown(
     f"""**Management tools for Voogle deployments.**
