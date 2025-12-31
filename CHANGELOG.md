@@ -21,6 +21,23 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 **WHY**: When debugging search quality, knowing which embedding model produced each fragment is critical. Previously it was impossible to tell if results came from local or OpenAI embeddings, or which model version was used.
 
 **REASONING**: Metadata in payload (not collection) allows mixed models during migration. Protocol properties enable provider-agnostic metadata generation. CLI rebuild command allows per-channel migration without affecting other data. Non-cached factory for CLI overrides avoids state pollution.
+- **Refresh episode URL capability** (#24)
+  - New `backend/src/voogle/collection/url_health.py` module for URL validation and refresh
+  - `check_url()`: HEAD request with timeout and comprehensive error handling
+  - `check_episode_url()`, `check_channel_urls()`, `check_all_broken_urls()`: Batch URL checking
+  - `find_episode_in_rss()`: Match episodes by GUID (preferred) or title (fallback)
+  - `find_updated_url()`, `preview_channel_refresh()`, `apply_url_refresh()`: URL refresh workflow
+  - Streamlit admin UI in Media page with 3 sections:
+    - "Detect Broken URLs": Scan all episodes and show broken ones
+    - "Preview URL Refresh": Show old/new URLs before applying
+    - "Apply URL Refresh": Update URLs with confirmation
+  - Rate limiting (0.5s delay between requests) to avoid CDN rate limits
+  - Audit logging of URL changes (old URL, new URL) for rollback capability
+  - Preserves transcription and embeddings status during URL refresh
+
+**WHY**: Podcast hosts sometimes change CDNs or file locations, causing episode URLs to 404. Previously this required deleting the episode and losing transcription/embedding work. Now admins can detect and fix broken URLs while preserving all processing work.
+
+**REASONING**: Safe by default - all changes require explicit admin action with preview. HEAD requests minimize bandwidth. GUID-first matching is stable; title fallback handles GUID changes. No automatic refresh to prevent unintended changes.
 
 - **Configurable chunking strategy per channel** (#19)
   - New `ChunkingConfig` dataclass with `chunk_size_words`, `chunk_overlap_words`, `min_chunk_length_words`
@@ -42,13 +59,27 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
   - Two-pass download strategy: web client first, android fallback for rate limits
   - Progress reporting and failure resilience (continues on individual failures)
   - Settings: `youtube_output_dir`, `youtube_audio_format`, `youtube_cookies_file`
-  - Comprehensive unit test coverage (20 tests)
+  - Comprehensive unit test coverage (31 tests) (#27)
+  - JSON fixture files for realistic yt-dlp data mocking
+  - Tests for helper functions (`_make_filename`, `_parse_upload_date`)
+  - Dry-run integration tests verifying full scan→emit_rss workflow
 
 **WHY**: Enables indexing YouTube playlists in Voogle. The adapter produces files and RSS that the existing collection pipeline can consume, enabling semantic search over YouTube content.
 
 **REASONING**: Placed in `sources/` directory (separate from `collection/`) because it represents a different abstraction level. The adapter doesn't touch the database directly - it produces files + RSS that existing `collection/feed.py` can ingest. Uses yt-dlp with no cookies by default (privacy-respecting).
 
 ### Fixed
+- **Single-item RSS feeds now parse correctly** (#23)
+  - Added `_normalize_items()` helper to handle xmltodict dict vs list edge case
+  - When RSS has exactly one `<item>`, xmltodict returns a dict instead of list
+  - New helper normalizes both cases to always return a list
+  - Added 14 regression tests to prevent re-introduction
+  - RSS fixture files (single, multi, empty) for deterministic testing
+
+**WHY**: Podcasts with exactly one episode would fail to parse, breaking import for new or limited-episode feeds. This is a common edge case in RSS parsing.
+
+**REASONING**: Test-driven fix locks in the behavior permanently. The `TestXmltodictBehavior` tests document the underlying library behavior we're protecting against.
+
 - **Dev mode works natively and in Docker** (#15)
   - Vite proxy target now configurable via `VITE_BACKEND_TARGET` environment variable
   - Native dev defaults to `http://localhost:8080` (backend `make start` port)

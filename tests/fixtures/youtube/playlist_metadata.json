@@ -1,0 +1,41 @@
+{
+  "_comment": "Sample yt-dlp playlist metadata (simplified from actual output)",
+  "id": "PLtest1234567890abc",
+  "title": "Test Podcast Playlist",
+  "description": "A test playlist for unit testing",
+  "channel": "Test Channel",
+  "channel_id": "UCtest123",
+  "uploader": "Test Uploader",
+  "entries": [
+    {
+      "id": "dQw4w9WgXcQ",
+      "title": "Episode 1: Getting Started",
+      "description": "In this episode we cover the basics.",
+      "duration": 1234,
+      "upload_date": "20240115",
+      "playlist_index": 1,
+      "channel": "Test Channel",
+      "channel_id": "UCtest123"
+    },
+    {
+      "id": "abc-_123XYZ",
+      "title": "Episode 2: Advanced Topics (Part 1)",
+      "description": "Deep dive into advanced features.\n\nTimestamps:\n0:00 Intro\n5:30 Main content",
+      "duration": 3600,
+      "upload_date": "20240122",
+      "playlist_index": 2,
+      "channel": "Test Channel",
+      "channel_id": "UCtest123"
+    },
+    {
+      "id": "xyz789_ABC",
+      "title": "Episode 3: Q&A - Your Questions Answered!",
+      "description": "",
+      "duration": 2400,
+      "upload_date": "20240129",
+      "playlist_index": 3,
+      "channel": "Test Channel",
+      "channel_id": "UCtest123"
+    }
+  ]
+}

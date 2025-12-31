@@ -26,12 +26,67 @@ from voogle.sources.youtube_playlist import (
     DownloadStatus,
     PlannedEpisode,
     YouTubePlaylistError,
+    _make_filename,
+    _parse_upload_date,
     emit_rss,
     scan,
     sync_media,
 )
 
 pytestmark = pytest.mark.unit
+
+
+# =============================================================================
+# Helper Function Tests
+# =============================================================================
+
+
+class TestMakeFilename:
+    @pytest.mark.description("_make_filename generates correct pattern with video ID")
+    def test_basic_filename(self) -> None:
+        result = _make_filename("My Video Title", "dQw4w9WgXcQ")
+        assert result == "My Video Title [dQw4w9WgXcQ].mp3"
+
+    @pytest.mark.description("_make_filename handles special characters in title")
+    def test_special_characters_in_title(self) -> None:
+        result = _make_filename("Video: Part 1 - (Full)", "abc123")
+        assert result == "Video: Part 1 - (Full) [abc123].mp3"
+
+    @pytest.mark.description("_make_filename handles YouTube IDs with brackets/hyphens")
+    def test_youtube_id_with_special_chars(self) -> None:
+        # YouTube IDs can contain hyphens and underscores
+        result = _make_filename("Test", "-_Ab12Cd34Ef")
+        assert result == "Test [-_Ab12Cd34Ef].mp3"
+
+    @pytest.mark.description("_make_filename preserves brackets in video ID for glob escaping")
+    def test_brackets_in_filename_need_glob_escaping(self) -> None:
+        # This test documents that filenames with [id] pattern need glob escaping
+        # when searching for files (e.g., glob.glob needs [[] escaping)
+        filename = _make_filename("Example", "abc123")
+        assert "[" in filename and "]" in filename
+        # The actual glob escaping happens at file search time, not filename generation
+
+
+class TestParseUploadDate:
+    @pytest.mark.description("_parse_upload_date parses YYYYMMDD format")
+    def test_valid_date(self) -> None:
+        result = _parse_upload_date("20240115")
+        assert result == datetime(2024, 1, 15, tzinfo=timezone.utc)
+
+    @pytest.mark.description("_parse_upload_date returns None for None input")
+    def test_none_input(self) -> None:
+        result = _parse_upload_date(None)
+        assert result is None
+
+    @pytest.mark.description("_parse_upload_date returns None for invalid format")
+    def test_invalid_format(self) -> None:
+        result = _parse_upload_date("2024-01-15")  # Wrong format
+        assert result is None
+
+    @pytest.mark.description("_parse_upload_date returns None for empty string")
+    def test_empty_string(self) -> None:
+        result = _parse_upload_date("")
+        assert result is None
 
 
 # =============================================================================
@@ -250,6 +305,123 @@ class TestScan:
         assert len(episodes) == 2
         assert episodes[0].video_id == "valid1"
         assert episodes[1].video_id == "valid2"
+
+
+# =============================================================================
+# Fixture-Based Integration Tests (Dry Run)
+# =============================================================================
+
+
+class TestDryRunWithFixtures:
+    """Integration-ish tests using JSON fixture files.
+
+    These tests verify the full scan→emit_rss workflow without network calls.
+    They use realistic fixture data to catch regressions in data mapping.
+    """
+
+    @pytest.fixture
+    def playlist_fixture_path(self) -> Path:
+        return Path(__file__).parent.parent / "fixtures" / "youtube" / "playlist_metadata.json"
+
+    @pytest.fixture
+    def playlist_metadata(self, playlist_fixture_path: Path) -> dict:
+        import json
+
+        return json.loads(playlist_fixture_path.read_text())
+
+    @pytest.mark.description("scan() correctly maps fixture data to PlannedEpisode list")
+    def test_scan_with_fixture_data(self, playlist_metadata: dict) -> None:
+        with patch("voogle.sources.youtube_playlist.YoutubeDL") as mock_ydl_class:
+            mock_ydl = MagicMock()
+            mock_ydl.extract_info.return_value = playlist_metadata
+            mock_ydl.__enter__ = MagicMock(return_value=mock_ydl)
+            mock_ydl.__exit__ = MagicMock(return_value=False)
+            mock_ydl_class.return_value = mock_ydl
+
+            episodes = scan("https://www.youtube.com/playlist?list=PLtest")
+
+        assert len(episodes) == 3
+        assert episodes[0].video_id == "dQw4w9WgXcQ"
+        assert episodes[0].title == "Episode 1: Getting Started"
+        assert episodes[0].playlist_title == "Test Podcast Playlist"
+        assert episodes[0].expected_filename == "Episode 1: Getting Started [dQw4w9WgXcQ].mp3"
+
+        # Second episode has special chars in ID
+        assert episodes[1].video_id == "abc-_123XYZ"
+        assert episodes[1].expected_filename == "Episode 2: Advanced Topics (Part 1) [abc-_123XYZ].mp3"
+
+        # Third episode tests Q&A special chars
+        assert episodes[2].title == "Episode 3: Q&A - Your Questions Answered!"
+
+    @pytest.mark.description("Full dry-run: scan fixture → emit RSS → validate structure")
+    def test_full_dryrun_workflow(self, playlist_metadata: dict, tmp_path: Path) -> None:
+        # Step 1: Scan (mocked)
+        with patch("voogle.sources.youtube_playlist.YoutubeDL") as mock_ydl_class:
+            mock_ydl = MagicMock()
+            mock_ydl.extract_info.return_value = playlist_metadata
+            mock_ydl.__enter__ = MagicMock(return_value=mock_ydl)
+            mock_ydl.__exit__ = MagicMock(return_value=False)
+            mock_ydl_class.return_value = mock_ydl
+
+            episodes = scan("https://www.youtube.com/playlist?list=PLtest")
+
+        # Step 2: Simulate downloaded files (skip actual download)
+        playlist_dir = tmp_path / "Test Podcast Playlist"
+        playlist_dir.mkdir()
+        for ep in episodes:
+            (playlist_dir / ep.expected_filename).write_bytes(b"fake audio")
+
+        # Step 3: Emit RSS
+        feed_path = tmp_path / "feed.xml"
+        result = emit_rss(episodes, tmp_path, feed_path, base_url="http://localhost:8080/local")
+
+        # Step 4: Validate RSS structure
+        assert result == feed_path
+        tree = ET.parse(feed_path)
+        root = tree.getroot()
+
+        assert root.tag == "rss"
+        channel = root.find("channel")
+        assert channel.find("title").text == "Test Podcast Playlist"
+
+        items = channel.findall("item")
+        assert len(items) == 3
+
+        # Verify enclosure URLs are correct
+        first_enclosure = items[0].find("enclosure")
+        assert "dQw4w9WgXcQ" in first_enclosure.get("url")
+        assert first_enclosure.get("type") == "audio/mpeg"
+
+    @pytest.mark.description("Dry-run handles special characters in filenames correctly")
+    def test_dryrun_special_characters(self, tmp_path: Path) -> None:
+        # Create episode with problematic characters
+        episodes = [
+            PlannedEpisode(
+                video_id="test[id]123",  # Brackets in ID (edge case)
+                title="Video: Part 1 - (Q&A)",
+                description="Special chars test",
+                duration_seconds=100,
+                upload_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                playlist_title="Test Playlist",
+                playlist_index=1,
+                expected_filename="Video: Part 1 - (Q&A) [test[id]123].mp3",
+            ),
+        ]
+
+        # Create the file
+        playlist_dir = tmp_path / "Test Playlist"
+        playlist_dir.mkdir()
+        (playlist_dir / episodes[0].expected_filename).write_bytes(b"audio")
+
+        # Emit RSS
+        feed_path = tmp_path / "feed.xml"
+        emit_rss(episodes, tmp_path, feed_path, base_url="http://example.com")
+
+        # Parse and verify
+        tree = ET.parse(feed_path)
+        item = tree.getroot().find("channel").find("item")
+        assert item.find("title").text == "Video: Part 1 - (Q&A)"
+        assert item.find("guid").text == "test[id]123"
 
 
 # =============================================================================
