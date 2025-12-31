@@ -51,6 +51,31 @@ tasks are defined in `[options.entry_points]` in
 [setup.cfg](./setup.cfg) file. You can use `--help` to see all their
 options, e.g. `voogle-management --help` or `voogle-episodes --help`.
 
+### voogle-episodes CLI
+
+```bash
+# Core operations
+voogle-episodes --update                  # Fetch new episodes from all channel feeds
+voogle-episodes --transcribe-days 7       # Transcribe episodes from last N days
+voogle-episodes --transcribe-channel UUID # Transcribe specific channel
+voogle-episodes --store                   # Index pending transcriptions to vector DB
+
+# Experiment/reindexing (creates new collection)
+voogle-episodes --reindex-channel UUID --experiment my_exp \
+    --chunk-size 40 --chunk-overlap 0 --min-chunk-length 10
+
+# Embedding management
+voogle-episodes --rebuild-embeddings --reindex-channel UUID  # Rebuild with metadata
+voogle-episodes --rebuild-embeddings --reindex-channel UUID --provider openai  # Use specific provider
+voogle-episodes --check-metadata          # Count fragments missing embedding metadata
+```
+
+**New options (multi-provider embeddings):**
+- `--rebuild-embeddings`: Re-embed all episodes for a channel with full metadata
+  (embedding_model, embedding_provider, embedded_at). Requires `--reindex-channel`.
+- `--provider [local|openai]`: Override the configured embeddings provider.
+- `--check-metadata`: Scan the vector database for fragments missing metadata fields.
+
 In the [first-run-tasks section of deployment
 docs](../infra/readme.md#first-run-tasks) we are using those scripts
 to add new collect podcast episodes, transcribe them or index pending

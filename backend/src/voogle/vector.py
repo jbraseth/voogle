@@ -211,4 +211,15 @@ def search(
         query_filter=query_filter,
         limit=num_results,
     ).points
-    return [QueryResponse(score=r.score, **r.payload) for r in results]  # type: ignore[arg-type,call-arg]
+    # Extract only the fields QueryResponse expects, ignoring metadata fields
+    return [
+        QueryResponse(
+            score=r.score,
+            episode=r.payload["episode"],  # type: ignore[index]
+            channel=r.payload["channel"],  # type: ignore[index]
+            start_secs=r.payload["start_secs"],  # type: ignore[index]
+            end_secs=r.payload["end_secs"],  # type: ignore[index]
+            text=r.payload["text"],  # type: ignore[index]
+        )
+        for r in results
+    ]
