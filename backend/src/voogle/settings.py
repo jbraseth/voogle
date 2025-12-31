@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     youtube_audio_format: str = "mp3"
     youtube_cookies_file: Optional[str] = None  # path to cookies.txt for auth
 
+    # Local Assistant Configuration
+    # CRITICAL: Feature is disabled by default and requires explicit enablement
+    # This feature shells out to CLI tools and should ONLY be used on trusted local machines
+    local_assistant_enabled: bool = False
+    local_assistant_allowlist: str = ""  # Comma-separated IPs, e.g., "192.168.1.100,10.0.0.5"
+    local_assistant_cli_timeout: int = 60  # Seconds to wait for CLI response
+    local_assistant_cli_preference: str = "claude"  # "claude" or "codex"
+
     @property
     def data_dir(self) -> pathlib.Path:
         # In Docker (both dev and prod), data is always mounted at /data

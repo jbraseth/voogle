@@ -9,6 +9,22 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Added
+- **Local RAG answer endpoint with CLI tools** (#33)
+  - New `/assistant/answer_local` endpoint for local-only RAG queries
+  - Retrieves relevant fragments via existing search, builds prompts with citations
+  - Shells out to user-installed `claude` or `codex` CLI for answer generation
+  - Three-layer security architecture (defense in depth):
+    1. Feature flag `LOCAL_ASSISTANT_ENABLED=false` by default
+    2. Network origin guard (localhost or explicit allowlist only)
+    3. Subprocess safety (shutil.which validation, no shell injection)
+  - New settings: `LOCAL_ASSISTANT_ENABLED`, `LOCAL_ASSISTANT_ALLOWLIST`, `LOCAL_ASSISTANT_CLI_TIMEOUT`, `LOCAL_ASSISTANT_CLI_PREFERENCE`
+  - Streamlit warning banner when feature is enabled
+  - Response includes answer text plus source citations with media URLs
+
+**WHY**: Enables zero-API-cost local development and testing of RAG functionality using pre-installed CLI tools. Users can query their indexed podcast transcripts and get answers with citations without any external API calls.
+
+**REASONING**: Disabled by default with multiple guard layers ensures zero chance of accidental production exposure. Localhost-only by default prevents security issues. CLI detection fails loud (no silent fallbacks). Uses existing search infrastructure to minimize code duplication.
+
 - **Multi-provider embeddings with consistent metadata** (#25)
   - `EmbeddingsProvider.model_name` and `provider_name` properties for tracking
   - Qdrant payload now includes `embedding_model`, `embedding_provider`, `embedded_at`

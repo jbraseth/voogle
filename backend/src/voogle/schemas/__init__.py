@@ -3,5 +3,6 @@
 # All rights reserved.
 
 from . import analytics as analytics
+from . import assistant as assistant
 from . import media as media
 from . import users as users
