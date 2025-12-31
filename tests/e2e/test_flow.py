@@ -13,14 +13,31 @@ This test validates the complete user flow:
 
 Requires test data with embeddings to be seeded before the test runs.
 See tests/fixtures/models.py::fake_episode_with_embeddings fixture.
+
+The tests are parametrized to cover both:
+- Podcast channels (external URLs)
+- Local channels (served via /local/ route)
 """
 
 import httpx
 import pytest
 from e2e.pages.voogle import Voogle
-from playwright.sync_api import Page, expect
+from playwright.sync_api import ConsoleMessage, Error, Page, expect
 
 pytestmark = pytest.mark.e2e
+
+
+# Channel type configurations for parametrized tests
+CHANNEL_TEST_CONFIGS = [
+    pytest.param(
+        {"search_term": "golf", "channel_type": "podcast", "expected_title": "Golf"},
+        id="podcast-channel",
+    ),
+    pytest.param(
+        {"search_term": "stay hungry", "channel_type": "local", "expected_title": "Local"},
+        id="local-channel",
+    ),
+]
 
 
 @pytest.fixture(name="api_client")
@@ -78,7 +95,7 @@ def fixture_console_monitor(page: Page) -> dict:
     console_errors: list[dict] = []
     page_errors: list[str] = []
 
-    def on_console(msg):
+    def on_console(msg: ConsoleMessage) -> None:
         console_messages.append(
             {"type": msg.type, "text": msg.text, "location": msg.location}
         )
@@ -87,7 +104,7 @@ def fixture_console_monitor(page: Page) -> dict:
                 {"type": msg.type, "text": msg.text, "location": msg.location}
             )
 
-    def on_page_error(error):
+    def on_page_error(error: Error) -> None:
         page_errors.append(str(error))
 
     page.on("console", on_console)
@@ -105,7 +122,8 @@ def test_voogle_search_and_playback(
     voogle_url: str,
     test_data: dict,
     console_monitor: dict,
-):
+    e2e_seed_data: None,
+) -> None:
     """Test complete Voogle flow: search query returns results and audio plays.
 
     This test verifies the PRIMARY user flow:
@@ -187,23 +205,21 @@ def test_voogle_search_and_playback(
         # Click the play button for this channel
         play_button = voogle.query.get_play_button(channel_id)
 
-        # Only click if the play button is visible (local channels don't have play buttons)
-        if play_button.is_visible():
-            play_button.click()
+        # All channels should now have play buttons (including local channels)
+        expect(play_button).to_be_visible()
+        play_button.click()
 
-            # Wait for audio player to appear
-            voogle.query.wait_for_player(timeout=10000)
+        # Wait for audio player to appear
+        voogle.query.wait_for_player(timeout=10000)
 
-            # Verify the player is visible
-            player = voogle.query.get_audio_player()
-            expect(player).to_be_visible()
+        # Verify the player is visible
+        player = voogle.query.get_audio_player()
+        expect(player).to_be_visible()
 
-            # Scroll player into view to ensure it's rendered
-            player.scroll_into_view_if_needed()
+        # Scroll player into view to ensure it's rendered
+        player.scroll_into_view_if_needed()
 
-            print(f"      Audio player appeared for channel {channel_id}")
-        else:
-            print(f"      Skipping channel {channel_id} (no play button - likely local channel)")
+        print(f"      Audio player appeared for channel {channel_id}")
 
     # ========================================
     # Step 7: Check for console errors
@@ -227,7 +243,7 @@ def test_home_page_loads(
     management_page: Page,
     voogle_url: str,
     console_monitor: dict,
-):
+) -> None:
     """Smoke test: verify home page loads without errors.
 
     This is a simpler test that doesn't require seeded data.
@@ -255,7 +271,7 @@ def test_query_page_loads(
     management_page: Page,
     voogle_url: str,
     console_monitor: dict,
-):
+) -> None:
     """Smoke test: verify query page loads and search input is visible.
 
     This test validates the query page UI without requiring seeded data.
@@ -281,3 +297,100 @@ def test_query_page_loads(
     assert len(console_monitor["page_errors"]) == 0, (
         f"Page errors on query page: {console_monitor['page_errors']}"
     )
+
+
+@pytest.mark.parametrize("config", CHANNEL_TEST_CONFIGS)
+def test_channel_type_playback(
+    management_page: Page,
+    voogle_url: str,
+    console_monitor: dict,
+    config: dict,
+    e2e_seed_data: None,
+) -> None:
+    """Parametrized test for both podcast and local channel playback.
+
+    This test validates that:
+    1. Search returns results for the specified channel type
+    2. Play button is visible for all channel types (including local)
+    3. Audio player appears and works for both podcast and local channels
+    4. Local channels use the /local/ route for media serving
+
+    Args:
+        config: Dict with search_term, channel_type, expected_title
+    """
+    page = management_page
+    voogle = Voogle(page)
+
+    search_term = config["search_term"]
+    channel_type = config["channel_type"]
+    expected_title = config["expected_title"]
+
+    print(f"\n    Testing {channel_type} channel with search: '{search_term}'")
+
+    # Navigate to home page
+    page.goto(voogle_url)
+    page.wait_for_load_state("networkidle")
+
+    # Navigate to query page
+    voogle.header.query_link.click()
+    page.wait_for_load_state("networkidle")
+
+    # Enter search query
+    voogle.query.fill_query(search_term)
+    voogle.query.submit_search()
+
+    # Wait for results
+    voogle.query.wait_for_results(timeout=30000)
+
+    # Verify we got results
+    result_cards = voogle.query.get_result_cards()
+    assert len(result_cards) > 0, (
+        f"No search results for '{search_term}'. "
+        f"Ensure {channel_type} channel is seeded with embeddings."
+    )
+
+    print(f"    Found {len(result_cards)} results for '{search_term}'")
+
+    # Find a result from the expected channel type
+    # Check that we have a result containing the expected title
+    found_expected = False
+    for card in result_cards:
+        card_text = card.inner_text()
+        if expected_title.lower() in card_text.lower():
+            found_expected = True
+            break
+
+    assert found_expected, (
+        f"No result found with '{expected_title}' in title. "
+        f"Results may not be from the expected {channel_type} channel."
+    )
+
+    # Get unique channel IDs and test playback
+    unique_channel_ids = voogle.query.get_unique_channel_ids()
+    assert len(unique_channel_ids) > 0, "No channel IDs found in results"
+
+    # Test the first channel's playback
+    channel_id = unique_channel_ids[0]
+    play_button = voogle.query.get_play_button(channel_id)
+
+    # Play button should be visible for ALL channel types now
+    expect(play_button).to_be_visible()
+    print(f"    Play button visible for {channel_type} channel")
+
+    # Click play
+    play_button.click()
+
+    # Wait for audio player
+    voogle.query.wait_for_player(timeout=10000)
+
+    # Verify player is visible
+    player = voogle.query.get_audio_player()
+    expect(player).to_be_visible()
+
+    print(f"    Audio player appeared for {channel_type} channel")
+
+    # Check for page errors
+    if console_monitor["page_errors"]:
+        pytest.fail(f"Page errors: {console_monitor['page_errors']}")
+
+    print(f"    {channel_type.upper()} channel E2E test passed!")

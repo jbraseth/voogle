@@ -125,6 +125,70 @@ async def fixture_fake_episode_with_embeddings(
     return episode
 
 
+@pytest.fixture(name="local_channel_with_embeddings")
+async def fixture_local_channel_with_embeddings(
+    aiolib: Any,  # noqa: ANN401
+    jobs_csv_path: pathlib.Path,
+    jobs_mp3_path: pathlib.Path,
+) -> models.media.Episode:
+    """Create a LOCAL channel with transcription, embeddings, AND actual audio file.
+
+    This fixture is required for E2E tests that need to test local media playback.
+    It:
+    1. Creates a local channel and episode
+    2. Copies the transcription CSV file
+    3. Copies the audio file to the media folder (accessible via /local/ route)
+    4. Calculates embeddings from the transcription
+    5. Stores embeddings in Qdrant
+
+    After this fixture runs, queries like "stay hungry" will return results,
+    and the audio will be playable via the /local/ route.
+    """
+    # Create local channel
+    local_channel = await models.Channel.objects.create(
+        kind=models.media.ChannelKind.local.value,
+        title="Local Speeches",
+        description="Local audio files - Steve Jobs and more",
+        language="en",
+        url="local://speeches",
+        feed="local://speeches/feed",
+        image="",  # Local channels may not have images
+        local_folder="local-speeches",
+    )
+
+    episode = await models.media.Episode.objects.create(
+        channel=local_channel,
+        title="Steve Jobs Stanford Speech",
+        description="Stay hungry, stay foolish - Stanford 2005",
+        date=datetime.now(timezone.utc),
+        url="local/speeches/jobs.mp3",  # Local URL pattern
+        guid="local-jobs-001",
+        transcribed=True,
+    )
+
+    # Copy transcription file to the data dir
+    assert jobs_csv_path.exists(), f"jobs.csv not found at {jobs_csv_path}"
+    dst = await storage.transcription_file(episode)
+    dst.parent.mkdir(exist_ok=True, parents=True)
+    shutil.copy(jobs_csv_path, dst)
+
+    # Copy audio file to media folder (for /local/ route serving)
+    channel_folder = storage.channel_path(local_channel)
+    channel_folder.mkdir(parents=True, exist_ok=True)
+    audio_dst = channel_folder / storage.episode_filename(episode)
+    shutil.copy(jobs_mp3_path, audio_dst)
+
+    # Calculate and store embeddings
+    provider = embedding.get_embeddings_provider()
+    client = vector.get_client()
+    collection_name = vector.DEFAULT_COLLECTION
+
+    vector.ensure_collection(client, collection_name, provider.get_embedding_dimension())
+    await tasks.store_episode_embeddings(episode, provider, client, collection_name)
+
+    return episode
+
+
 @pytest.fixture(name="multi_channel_test_data")
 async def fixture_multi_channel_test_data(
     aiolib: Any,  # noqa: ANN401
@@ -213,5 +277,99 @@ async def fixture_multi_channel_test_data(
     # Store jobs embeddings
     await tasks.store_episode_embeddings(jobs_episode, provider, client, collection_name)
     episodes.append(jobs_episode)
+
+    return episodes
+
+
+@pytest.fixture(name="mixed_channel_test_data")
+async def fixture_mixed_channel_test_data(
+    aiolib: Any,  # noqa: ANN401
+    golf_csv_path: pathlib.Path,
+    jobs_csv_path: pathlib.Path,
+    jobs_mp3_path: pathlib.Path,
+) -> dict[str, models.media.Episode]:
+    """Create both podcast and local channels for E2E testing.
+
+    This fixture creates:
+    1. Golf podcast channel - standard podcast with golf.csv transcription
+    2. Local speeches channel - local channel with jobs.csv + jobs.mp3
+
+    Returns dict with channel types as keys for easy test parametrization:
+    - "podcast": golf episode (search "golf")
+    - "local": jobs episode (search "stay hungry")
+    """
+    provider = embedding.get_embeddings_provider()
+    client = vector.get_client()
+    collection_name = vector.DEFAULT_COLLECTION
+
+    vector.ensure_collection(client, collection_name, provider.get_embedding_dimension())
+
+    episodes: dict[str, models.media.Episode] = {}
+
+    # ===== Podcast Channel: Golf =====
+    golf_channel = await models.Channel.objects.create(
+        kind=models.media.ChannelKind.podcast.value,
+        title="Golf Podcast",
+        description="Podcast about golf tournaments",
+        language="en",
+        url="https://example.com/golf-podcast",
+        feed="https://example.com/golf-podcast/feed",
+        image="https://example.com/golf-image.jpg",
+        local_folder="",
+    )
+
+    golf_episode = await models.media.Episode.objects.create(
+        channel=golf_channel,
+        title="The Open Championship Discussion",
+        description="Discussing the Open Championship golf tournament",
+        date=datetime.now(timezone.utc),
+        url="https://example.com/golf-podcast/episode1.mp3",
+        guid="golf-episode-001",
+        transcribed=True,
+    )
+
+    assert golf_csv_path.exists()
+    dst = await storage.transcription_file(golf_episode)
+    dst.parent.mkdir(exist_ok=True, parents=True)
+    shutil.copy(golf_csv_path, dst)
+
+    await tasks.store_episode_embeddings(golf_episode, provider, client, collection_name)
+    episodes["podcast"] = golf_episode
+
+    # ===== Local Channel: Speeches =====
+    local_channel = await models.Channel.objects.create(
+        kind=models.media.ChannelKind.local.value,
+        title="Local Speeches",
+        description="Local audio - Steve Jobs speech",
+        language="en",
+        url="local://speeches",
+        feed="local://speeches/feed",
+        image="",
+        local_folder="local-speeches",
+    )
+
+    jobs_episode = await models.media.Episode.objects.create(
+        channel=local_channel,
+        title="Steve Jobs Stanford Speech",
+        description="Stay hungry, stay foolish",
+        date=datetime.now(timezone.utc),
+        url="local/speeches/jobs.mp3",
+        guid="local-jobs-001",
+        transcribed=True,
+    )
+
+    assert jobs_csv_path.exists()
+    dst = await storage.transcription_file(jobs_episode)
+    dst.parent.mkdir(exist_ok=True, parents=True)
+    shutil.copy(jobs_csv_path, dst)
+
+    # Copy audio file for local serving
+    channel_folder = storage.channel_path(local_channel)
+    channel_folder.mkdir(parents=True, exist_ok=True)
+    audio_dst = channel_folder / storage.episode_filename(jobs_episode)
+    shutil.copy(jobs_mp3_path, audio_dst)
+
+    await tasks.store_episode_embeddings(jobs_episode, provider, client, collection_name)
+    episodes["local"] = jobs_episode
 
     return episodes

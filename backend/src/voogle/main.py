@@ -4,6 +4,7 @@
 
 """Main module that will be always executed on startup."""
 import logging
+from typing import Callable
 
 import fastapi
 from fastapi.middleware import cors
@@ -24,9 +25,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_private_network_access_headers(
+    request: fastapi.Request,
+    call_next: Callable[[fastapi.Request], fastapi.Response],
+) -> fastapi.Response:
+    """Allow Chrome Private Network Access (requests from external hosts to localhost)."""
+    response = await call_next(request)
+    # Always add PNA header for dev - Chrome requires it for localhost access from external hosts
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
+
 app.include_router(routers.app.router)
 app.include_router(routers.users.router)
 app.include_router(routers.media.router)
 app.include_router(routers.analytics.router)
+app.include_router(routers.local.router)
 
 add_pagination(app)

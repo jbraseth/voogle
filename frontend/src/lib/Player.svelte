@@ -5,6 +5,7 @@
   export let channel;
   export let episode;
   export let time;
+  export let media_url;
 
   let audio = {};
   let isWaiting = false
@@ -15,7 +16,7 @@
   }
 
   $: edate = new Date(episode.date);
-  $: eurl = [episode.url];
+  $: eurl = [media_url];
 
 
   function canplay(event) {

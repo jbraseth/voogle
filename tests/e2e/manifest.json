@@ -1,7 +1,7 @@
 {
-  "management_url": "http://management:8501",
-  "frontend_url": "http://frontend:5173",
-  "api_url": "http://backend:80",
+  "management_url": "http://localhost:8501",
+  "frontend_url": "http://localhost:80",
+  "api_url": "http://localhost:81",
   "admin_username": "voogle-admin",
   "admin_password": "*audio*search*engine"
 }

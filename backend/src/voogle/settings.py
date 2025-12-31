@@ -35,7 +35,6 @@ class Environment(enum.Enum):
 
 
 class Settings(BaseSettings):
-    model_config = {"env_prefix": "VOOGLE_"}
 
     # this default variables will be used when running the system
     # without any additional env var (usually, we will want them to be
@@ -57,6 +56,9 @@ class Settings(BaseSettings):
     # If OPENAI_API_KEY is set, uses OpenAI API instead of local models
     openai_api_key: Optional[str] = None
     openai_model: str = "text-embedding-3-small"
+
+    # Explicit embeddings provider override: "local", "openai", or None (auto-detect)
+    embeddings_provider_override: Optional[str] = None
 
     @property
     def data_dir(self) -> pathlib.Path:
@@ -87,10 +89,14 @@ class Settings(BaseSettings):
 
     @property
     def embeddings_provider(self) -> str:
-        """Auto-detect embeddings provider based on API key presence.
+        """Determine which embeddings provider to use.
 
-        Returns 'openai' if OPENAI_API_KEY is set, otherwise 'local'.
+        Priority:
+        1. Explicit override via EMBEDDINGS_PROVIDER_OVERRIDE env var
+        2. Auto-detect: 'openai' if OPENAI_API_KEY is set, otherwise 'local'
         """
+        if self.embeddings_provider_override:
+            return self.embeddings_provider_override
         return "openai" if self.openai_api_key else "local"
 
 

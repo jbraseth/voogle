@@ -13,6 +13,7 @@ from fastapi_pagination.ext.ormar import paginate
 from voogle import auth, storage, tasks, transcription
 from voogle.collection import crawler
 from voogle.models import analytics, media, users
+from voogle.models.media import ChannelKind
 from voogle.schemas import media as media_schemas
 
 logger = logging.getLogger(__name__)
@@ -158,13 +159,19 @@ async def query(
             logger.warning(f"Episode {episode.pk} has no associated channel, skipping")
             continue
         channel = await episode.channel.load()
+        # Use local media URL for local channels, original URL for podcast channels
+        if channel.kind == ChannelKind.local.value:
+            media_url = storage.local_media_url(channel, episode)
+        else:
+            media_url = str(episode.url)
         output.append(
             media_schemas.QueryResponse(
                 text=r.text,
-                episode=episode,
-                channel=channel,
+                episode=episode.model_dump(exclude={"pk", "channel"}),
+                channel=channel.model_dump(exclude={"pk", "episodes"}),
                 similarity=r.score,
                 start=r.start_secs,
+                media_url=media_url,
             )
         )
     return output

@@ -70,6 +70,25 @@ async def transcription_file(
     return efile.with_suffix(".csv")
 
 
+def channel_folder_name(channel: media.Channel) -> str:
+    """Return the folder name for a channel (without full path)."""
+    return f"{slugify(str(channel.title)[:30])}-{slugify(str(channel.feed)[-10:])}"
+
+
+def episode_filename(episode: media.Episode) -> str:
+    """Return the filename for an episode (without path)."""
+    fname = f"{slugify(str(episode.title)[:30])}-{slugify(str(episode.url)[-10:])}"
+    return f"{fname}.{DEFAULT_EPISODES_SUFFIX}"
+
+
+def local_media_url(channel: media.Channel, episode: media.Episode) -> str:
+    """Return the local media URL for an episode.
+
+    Returns a URL like /local/<channel_folder>/<episode_file>
+    """
+    return f"/local/{channel_folder_name(channel)}/{episode_filename(episode)}"
+
+
 async def download_episode(episode: media.Episode) -> pathlib.Path:
     """Download the audio file associated to a given episode.
 

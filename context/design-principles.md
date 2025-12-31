@@ -63,6 +63,18 @@ Integration tests > unit tests for APIs. Mock external services, not internal co
 **Do:** Test public interfaces, use real dependencies when fast enough.
 **Don't:** Test private methods, mock everything, write slow tests.
 
+### Understand Before Fixing
+When fixing test fixtures or adapting tests, read the actual data structures first. Don't guess field names or schemas from error messages.
+
+**Do:** Read the NamedTuple/dataclass/schema definition before writing fixture data.
+**Don't:** Reactively fix field names one error at a time.
+
+### E2E Tests Monitor Console Errors
+Browser console errors/warnings in E2E tests indicate real bugs. The `console_monitor` fixture exists to catch these.
+
+**Do:** Run E2E tests with `--headed` during development to verify no console errors.
+**Don't:** Bypass console monitoring during manual testing—if the browser shows errors, the test should fail.
+
 ---
 
 ## Pre-Commit Checklist

@@ -1,1 +1,29 @@
-node_modules
+node_modules/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.*
+
+# Docker files (avoid recursive context)
+dockerfile*
+docker-compose*
+compose*
+
+# Documentation
+*.md

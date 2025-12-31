@@ -10,21 +10,20 @@ running services) to skip the heavy torch/sentence-transformers import chain.
 """
 
 import pytest
+from starlette.testclient import TestClient
 
 
 @pytest.fixture(name="client")
-def fixture_client():
+def fixture_client() -> TestClient:
     """Create a test client for direct API testing."""
-    from starlette.testclient import TestClient
     from voogle import main
 
     return TestClient(main.app)
 
 
 @pytest.fixture(name="auth_client")
-async def fixture_auth_client():
+async def fixture_auth_client() -> TestClient:
     """Create an authenticated test client for direct API testing."""
-    from starlette.testclient import TestClient
     from voogle import auth, main, models
     from voogle.settings import settings
 
