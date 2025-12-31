@@ -4,7 +4,639 @@ Active tasks and implementation plans for Voogle.
 
 ---
 
-## Active: YouTube Playlist Ingestion Adapter (Milestone C)
+## Active: Refresh Episode URL Capability (Issue #24)
+
+**Goal**: Add capability to refresh episode URLs when enclosure URLs return 404, recovering without deleting the episode or losing transcription/embedding work.
+
+**Status**: Planning
+
+**Branch**: `feat/24-refresh-episode-urls`
+
+**Issue**: https://github.com/jbraseth/voogle/issues/24
+
+---
+
+### Architecture Overview
+
+This feature adds a new module `backend/src/voogle/collection/url_health.py` for URL validation and refresh logic, plus Streamlit admin controls for detecting and fixing broken URLs.
+
+**Data Flow**:
+```
+Admin triggers "Detect Broken URLs"
+    ↓
+url_health.check_episode_url(episode) → HEAD request
+    ↓
+Returns URLHealthResult(status, error_code, error_message)
+    ↓
+Admin sees list of broken episodes with error details
+    ↓
+Admin clicks "Preview Refresh" for a channel
+    ↓
+url_health.find_updated_url(episode, channel) → re-fetch RSS, match by GUID
+    ↓
+Returns URLRefreshResult(old_url, new_url, validation_status)
+    ↓
+Admin confirms refresh
+    ↓
+url_health.apply_url_refresh(episode, new_url) → updates DB, logs change
+```
+
+---
+
+### Data Types
+
+```python
+# backend/src/voogle/collection/url_health.py
+
+from dataclasses import dataclass
+from enum import Enum
+from datetime import datetime
+
+class URLStatus(Enum):
+    OK = "ok"                      # URL responds 200
+    NOT_FOUND = "not_found"        # 404
+    FORBIDDEN = "forbidden"        # 403
+    SERVER_ERROR = "server_error"  # 5xx
+    TIMEOUT = "timeout"            # Request timed out
+    CONNECTION_ERROR = "connection_error"  # Host unreachable
+    REDIRECT_LOOP = "redirect_loop"  # Too many redirects
+    INVALID_URL = "invalid_url"    # Malformed URL
+
+@dataclass
+class URLHealthResult:
+    """Result of checking a single episode URL."""
+    episode_pk: int
+    episode_title: str
+    url: str
+    status: URLStatus
+    http_code: int | None          # Actual HTTP status code if available
+    error_message: str | None      # Human-readable error
+    checked_at: datetime
+
+@dataclass
+class URLRefreshResult:
+    """Result of attempting to find an updated URL for an episode."""
+    episode_pk: int
+    episode_title: str
+    old_url: str
+    new_url: str | None            # None if no match found in RSS
+    match_method: str | None       # "guid" or "title"
+    new_url_valid: bool            # True if new URL responds 200
+    error_message: str | None      # Why refresh failed (if applicable)
+```
+
+---
+
+### Module Interface
+
+```python
+# backend/src/voogle/collection/url_health.py
+
+import logging
+from typing import AsyncIterator
+import requests
+from requests.exceptions import Timeout, ConnectionError, RequestException
+
+from voogle import models
+from voogle.collection import feed
+
+logger = logging.getLogger(__name__)
+
+# Constants
+HEAD_TIMEOUT = 10  # seconds
+GET_TIMEOUT = 30   # seconds for full feed fetch
+BATCH_DELAY = 0.5  # seconds between requests to avoid rate limiting
+
+
+def check_url(url: str, timeout: int = HEAD_TIMEOUT) -> URLHealthResult:
+    """Check if a URL is accessible via HEAD request.
+
+    Returns URLHealthResult with status and error details.
+    Does not raise exceptions - all errors captured in result.
+    """
+
+
+async def check_episode_url(episode: models.Episode) -> URLHealthResult:
+    """Check the health of an episode's media URL."""
+
+
+async def check_channel_urls(
+    channel: models.Channel,
+    on_progress: Callable[[int, int], None] | None = None
+) -> list[URLHealthResult]:
+    """Check all episode URLs for a channel with rate limiting.
+
+    Args:
+        channel: Channel to check
+        on_progress: Callback(checked_count, total_count) for progress
+
+    Returns list of URLHealthResult for all episodes.
+    """
+
+
+async def check_all_broken_urls(
+    on_progress: Callable[[int, int], None] | None = None
+) -> list[URLHealthResult]:
+    """Check all episode URLs across all channels.
+
+    Returns only episodes with non-OK status.
+    """
+
+
+def find_episode_in_rss(
+    episode: models.Episode,
+    rss_items: list[dict]
+) -> dict | None:
+    """Match an episode to an RSS item by GUID (preferred) or title (fallback).
+
+    Returns the matching RSS item dict or None if not found.
+    """
+
+
+async def find_updated_url(
+    episode: models.Episode,
+    channel: models.Channel
+) -> URLRefreshResult:
+    """Re-fetch channel RSS and find updated URL for episode.
+
+    Strategy:
+    1. Fetch current RSS feed for channel
+    2. Match episode by GUID (preferred) or title (fallback)
+    3. Compare enclosure URL to stored URL
+    4. If different, validate new URL responds 200
+    5. Return result with old URL, new URL, and validation status
+    """
+
+
+async def preview_channel_refresh(
+    channel: models.Channel,
+    broken_only: bool = True
+) -> list[URLRefreshResult]:
+    """Preview URL refreshes for a channel without applying changes.
+
+    Args:
+        channel: Channel to check
+        broken_only: If True, only check episodes with broken URLs
+
+    Returns list of URLRefreshResult showing potential changes.
+    """
+
+
+async def apply_url_refresh(
+    episode: models.Episode,
+    new_url: str
+) -> None:
+    """Apply a URL refresh to an episode.
+
+    - Validates new URL responds 200 before updating
+    - Logs old URL for audit trail
+    - Updates episode.url in database
+    - Preserves transcription and embeddings status
+
+    Raises ValueError if new URL is not accessible.
+    """
+
+
+async def refresh_broken_urls(
+    channel: models.Channel,
+    dry_run: bool = True
+) -> list[URLRefreshResult]:
+    """Refresh all broken URLs for a channel from its RSS feed.
+
+    Args:
+        channel: Channel to refresh
+        dry_run: If True, preview only (don't apply changes)
+
+    Returns list of URLRefreshResult for all broken episodes.
+    """
+```
+
+---
+
+### Implementation Steps
+
+#### Step 1: Create url_health.py module
+
+Create `backend/src/voogle/collection/url_health.py` with:
+- Data classes (URLStatus, URLHealthResult, URLRefreshResult)
+- `check_url()` - basic HEAD request with timeout and error handling
+- `check_episode_url()` - wrapper for Episode model
+
+**Key implementation detail for check_url()**:
+```python
+def check_url(url: str, timeout: int = HEAD_TIMEOUT) -> tuple[URLStatus, int | None, str | None]:
+    """Check URL health via HEAD request."""
+    try:
+        response = requests.head(
+            url,
+            timeout=timeout,
+            allow_redirects=True,
+            headers={"User-Agent": "Voogle/1.0 (URL Health Check)"}
+        )
+        response.raise_for_status()
+        return URLStatus.OK, response.status_code, None
+
+    except Timeout:
+        return URLStatus.TIMEOUT, None, "Request timed out"
+    except ConnectionError:
+        return URLStatus.CONNECTION_ERROR, None, "Host unreachable"
+    except requests.HTTPError as e:
+        code = e.response.status_code
+        if code == 404:
+            return URLStatus.NOT_FOUND, code, "URL not found"
+        elif code == 403:
+            return URLStatus.FORBIDDEN, code, "Access forbidden"
+        elif 500 <= code < 600:
+            return URLStatus.SERVER_ERROR, code, f"Server error ({code})"
+        else:
+            return URLStatus.SERVER_ERROR, code, f"HTTP error ({code})"
+    except RequestException as e:
+        return URLStatus.INVALID_URL, None, str(e)
+```
+
+#### Step 2: Implement batch URL checking
+
+Add `check_channel_urls()` and `check_all_broken_urls()` with:
+- Rate limiting (0.5s delay between requests)
+- Progress callback for UI updates
+- Parallel checking within channel, sequential between channels
+
+#### Step 3: Implement RSS re-parsing for URL refresh
+
+Add `find_episode_in_rss()` with episode matching logic:
+```python
+def find_episode_in_rss(
+    episode: models.Episode,
+    rss_items: list[dict]
+) -> dict | None:
+    """Match episode to RSS item by GUID (preferred) or title (fallback)."""
+    episode_guid = str(episode.guid)
+    episode_title = str(episode.title).lower().strip()
+
+    # First pass: match by GUID
+    for item in rss_items:
+        item_guid = feed._episode_guid(item.get("guid", ""))
+        if item_guid == episode_guid:
+            return item
+
+    # Second pass: match by title (fallback)
+    for item in rss_items:
+        item_title = (item.get("title") or "").lower().strip()
+        if item_title == episode_title:
+            logger.warning(f"Episode {episode.pk} matched by title, not GUID")
+            return item
+
+    return None
+```
+
+#### Step 4: Implement URL refresh functions
+
+Add `find_updated_url()`, `preview_channel_refresh()`, and `apply_url_refresh()`:
+- `find_updated_url()` - fetch RSS, match, compare URLs, validate new URL
+- `preview_channel_refresh()` - batch preview without DB changes
+- `apply_url_refresh()` - validate and persist URL change
+
+**Key: apply_url_refresh() audit logging**:
+```python
+async def apply_url_refresh(episode: models.Episode, new_url: str) -> None:
+    """Apply URL refresh with validation and audit logging."""
+    old_url = episode.url
+
+    # Validate new URL is accessible
+    status, code, error = check_url(new_url)
+    if status != URLStatus.OK:
+        raise ValueError(f"New URL not accessible: {error}")
+
+    # Log for audit trail
+    logger.info(
+        f"Refreshing episode URL",
+        extra={
+            "episode_pk": episode.pk,
+            "episode_title": episode.title,
+            "old_url": old_url,
+            "new_url": new_url,
+        }
+    )
+
+    # Update database (preserves transcription/embeddings)
+    await episode.update(url=new_url)
+```
+
+#### Step 5: Add Streamlit admin controls
+
+Create new section in `backend/src/voogle/management/pages/3_🔈-Media.py`:
+
+```python
+async def url_health_section() -> None:
+    st.header("🔗 URL Health")
+    st.markdown("""Detect and fix broken episode media URLs.
+    This helps recover episodes when podcast hosts change their CDN or file locations.""")
+
+    # Metrics
+    col1, col2 = st.columns(2)
+    total_episodes = await models.Episode.objects.count()
+    col1.metric("Total Episodes", total_episodes)
+
+    # Last check status
+    if last_check := utils.get_event("event_url_check_start"):
+        last_time = datetime.fromtimestamp(float(last_check["time"]), tz=timezone.utc)
+        col2.markdown(f"**Last check**: `{last_time.strftime('%c')}`")
+
+    # Detect broken URLs button
+    st.subheader("1. Detect Broken URLs")
+    if st.button("🔍 Scan All Episode URLs", use_container_width=True):
+        with st.spinner("⌛ Checking URLs... This may take several minutes."):
+            broken = await url_health.check_all_broken_urls()
+
+        if not broken:
+            st.success("✓ All episode URLs are accessible!")
+        else:
+            st.warning(f"Found {len(broken)} broken URLs")
+            for result in broken:
+                with st.expander(f"❌ {result.episode_title}"):
+                    st.code(result.url)
+                    st.error(f"Status: {result.status.value} - {result.error_message}")
+
+    st.divider()
+
+    # Preview refresh section
+    st.subheader("2. Preview URL Refresh")
+    channels = await models.Channel.objects.all()
+    channel_options = {ch.title: ch for ch in channels}
+
+    selected_channel = st.selectbox(
+        "Select channel to preview",
+        options=list(channel_options.keys())
+    )
+
+    if st.button("👁️ Preview Changes", use_container_width=True):
+        channel = channel_options[selected_channel]
+        with st.spinner("⌛ Fetching RSS and comparing URLs..."):
+            results = await url_health.preview_channel_refresh(channel, broken_only=True)
+
+        if not results:
+            st.success("✓ No URL changes found")
+        else:
+            st.info(f"Found {len(results)} potential URL updates")
+            for result in results:
+                with st.expander(f"📝 {result.episode_title}"):
+                    st.markdown(f"**Old URL**: `{result.old_url}`")
+                    st.markdown(f"**New URL**: `{result.new_url}`")
+                    st.markdown(f"**Match method**: {result.match_method}")
+                    if result.new_url_valid:
+                        st.success("✓ New URL is accessible")
+                    else:
+                        st.error(f"❌ New URL not accessible: {result.error_message}")
+
+    st.divider()
+
+    # Apply refresh section
+    st.subheader("3. Apply URL Refresh")
+    st.warning("⚠️ This will update episode URLs in the database. Preview first!")
+
+    if st.button("🔄 Apply Refresh for Selected Channel", use_container_width=True):
+        channel = channel_options[selected_channel]
+        with st.spinner("⌛ Applying URL refreshes..."):
+            results = await url_health.refresh_broken_urls(channel, dry_run=False)
+
+        applied = [r for r in results if r.new_url and r.new_url_valid]
+        failed = [r for r in results if r.error_message]
+
+        if applied:
+            st.success(f"✓ Updated {len(applied)} episode URLs")
+        if failed:
+            st.error(f"❌ Failed to update {len(failed)} episodes")
+            for result in failed:
+                st.error(f"- {result.episode_title}: {result.error_message}")
+```
+
+#### Step 6: Add event logging for URL health checks
+
+Add to `utils.py`:
+- `"event_url_check_start"` - when URL scan begins
+- `"event_url_check_end"` - when URL scan completes with summary
+
+#### Step 7: Add tests
+
+Create `tests/unit/collection/test_url_health.py`:
+```python
+pytestmark = pytest.mark.unit
+
+class TestCheckUrl:
+    @pytest.mark.description("check_url returns OK for accessible URLs")
+    def test_accessible_url(self) -> None:
+        with patch("requests.head") as mock_head:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_head.return_value = mock_response
+
+            status, code, error = check_url("https://example.com/file.mp3")
+
+            assert status == URLStatus.OK
+            assert code == 200
+            assert error is None
+
+    @pytest.mark.description("check_url returns NOT_FOUND for 404")
+    def test_not_found_url(self) -> None:
+        with patch("requests.head") as mock_head:
+            mock_response = MagicMock()
+            mock_response.status_code = 404
+            mock_head.return_value = mock_response
+            mock_head.side_effect = requests.HTTPError(response=mock_response)
+
+            status, code, error = check_url("https://example.com/missing.mp3")
+
+            assert status == URLStatus.NOT_FOUND
+            assert code == 404
+
+    @pytest.mark.description("check_url handles timeout")
+    def test_timeout(self) -> None:
+        with patch("requests.head") as mock_head:
+            mock_head.side_effect = Timeout()
+
+            status, code, error = check_url("https://slow.example.com/file.mp3")
+
+            assert status == URLStatus.TIMEOUT
+            assert code is None
+
+class TestFindEpisodeInRss:
+    @pytest.mark.description("find_episode_in_rss matches by GUID")
+    def test_match_by_guid(self) -> None:
+        episode = MagicMock()
+        episode.guid = "unique-guid-123"
+        episode.title = "Episode Title"
+
+        rss_items = [
+            {"guid": "other-guid", "title": "Other Episode"},
+            {"guid": "unique-guid-123", "title": "Episode Title", "enclosure": {"@url": "new-url"}},
+        ]
+
+        result = find_episode_in_rss(episode, rss_items)
+
+        assert result is not None
+        assert result["guid"] == "unique-guid-123"
+
+    @pytest.mark.description("find_episode_in_rss falls back to title match")
+    def test_fallback_to_title(self) -> None:
+        episode = MagicMock()
+        episode.guid = "old-guid"
+        episode.title = "Episode Title"
+
+        rss_items = [
+            {"guid": "new-guid", "title": "Episode Title", "enclosure": {"@url": "new-url"}},
+        ]
+
+        result = find_episode_in_rss(episode, rss_items)
+
+        assert result is not None
+        assert result["title"] == "Episode Title"
+```
+
+Create `tests/integration/test_url_health.py`:
+```python
+pytestmark = pytest.mark.integration
+
+@pytest.mark.description("URL refresh preserves episode transcription status")
+async def test_refresh_preserves_transcription(
+    channel: models.Channel,
+    auth_client: TestClient
+) -> None:
+    """Refreshing URL should not affect transcription/embeddings flags."""
+    # Get episode with transcription
+    episode = await models.Episode.objects.filter(
+        channel=channel, transcribed=True
+    ).first()
+
+    old_transcribed = episode.transcribed
+    old_embeddings = episode.embeddings
+
+    # Mock RSS with new URL
+    with patch("voogle.collection.feed._read_channel_feed") as mock_feed:
+        mock_feed.return_value = {
+            "rss": {
+                "channel": {
+                    "item": [
+                        {
+                            "guid": episode.guid,
+                            "title": episode.title,
+                            "enclosure": {"@url": "https://new-cdn.example.com/episode.mp3"}
+                        }
+                    ]
+                }
+            }
+        }
+
+        with patch("voogle.collection.url_health.check_url") as mock_check:
+            mock_check.return_value = (URLStatus.OK, 200, None)
+
+            await url_health.apply_url_refresh(
+                episode,
+                "https://new-cdn.example.com/episode.mp3"
+            )
+
+    # Reload and verify
+    await episode.load()
+    assert episode.url == "https://new-cdn.example.com/episode.mp3"
+    assert episode.transcribed == old_transcribed
+    assert episode.embeddings == old_embeddings
+```
+
+#### Step 8: Update CHANGELOG.md
+
+Add entry documenting the new feature.
+
+---
+
+### Key Design Decisions
+
+1. **HEAD requests for validation**: Use HEAD instead of GET to minimize bandwidth and server load when just checking URL accessibility.
+
+2. **Rate limiting**: 0.5 second delay between URL checks to avoid triggering rate limits on podcast CDNs.
+
+3. **GUID-first matching**: Match episodes by GUID (stable identifier) first, fall back to title only if GUID doesn't match. Log title-based matches as warnings.
+
+4. **Preview before apply**: All URL changes require explicit admin confirmation. Preview shows what will change before any database modifications.
+
+5. **Audit logging**: Log old and new URLs for every refresh to enable rollback if needed.
+
+6. **Preserve transcription state**: URL refresh updates only the `url` field, preserving `transcribed` and `embeddings` status.
+
+7. **No auto-refresh**: All URL changes require explicit admin action. No automatic background refresh.
+
+---
+
+### Files Modified/Created
+
+**Created**:
+- `backend/src/voogle/collection/url_health.py` - URL validation and refresh logic
+
+**Modified**:
+- `backend/src/voogle/management/pages/3_🔈-Media.py` - Add URL health section
+- `CHANGELOG.md` - Document new feature
+
+**Tests Added**:
+- `tests/unit/collection/test_url_health.py` - Unit tests for URL checking/matching
+- `tests/integration/test_url_health.py` - Integration tests for refresh flow
+
+---
+
+### Edge Cases
+
+1. **GUID changed in RSS**: Fall back to title matching, log warning
+2. **Episode removed from RSS**: Cannot refresh, show clear error message
+3. **New URL also 404s**: Reject update, show error in preview
+4. **Rate limiting on HEAD requests**: 0.5s delay, exponential backoff on 429
+5. **Timeout during batch check**: Mark as TIMEOUT status, don't fail entire batch
+6. **Redirect chains**: Follow redirects (allow_redirects=True), detect loops
+
+---
+
+### Success Criteria
+
+- [ ] Admin can detect broken episode URLs in bulk
+- [ ] Admin can preview URL changes before applying
+- [ ] Admin can refresh URLs for a specific channel
+- [ ] URL changes are validated before persisting (new URL must return 200)
+- [ ] Episode transcriptions and embeddings are preserved during URL update
+- [ ] Clear audit trail of URL changes (old URL, new URL, timestamp in logs)
+- [ ] No automatic URL changes - all require explicit admin action
+
+---
+
+### Verification (REQUIRED before marking complete)
+
+Run these commands and confirm ALL pass:
+
+```bash
+# 1. Lint (must pass)
+cd backend && ruff check .
+
+# 2. Unit + Integration tests (must pass)
+pytest tests/ --ignore=tests/e2e -v
+
+# 3. E2E tests (must pass) - requires frontend + backend running
+pytest tests/e2e -v
+```
+
+---
+
+### Brutal Critic Review (Meeting 404 scenario)
+
+**Addressed concerns**:
+1. ✅ **Detection visibility**: Admin sees clear list of broken URLs with status codes
+2. ✅ **Safe by default**: Preview before apply, no automatic changes
+3. ✅ **Audit trail**: All URL changes logged with old/new values
+4. ✅ **Preserve work**: Transcriptions and embeddings untouched by URL refresh
+5. ✅ **Clear errors**: Human-readable error messages for all failure modes
+
+**Not addressed (out of scope)**:
+- Automatic monitoring/alerting for broken URLs (would require scheduled job)
+- Bulk refresh across all channels (can add if needed)
+- URL validation during initial episode ingestion (separate concern)
+
+---
+
+## Previous: YouTube Playlist Ingestion Adapter (Milestone C)
 
 **Goal**: Refactor `yt_playlist_tool.py` into a proper Voogle source adapter at `backend/src/voogle/sources/youtube_playlist.py` that provides three operations: scan (get metadata), sync_media (download audio), and emit_rss (generate local RSS feed for Voogle ingestion).
 
