@@ -8,6 +8,14 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 ## [Unreleased]
 
+### Fixed
+- **Frontend local media playback** (#13)
+  - Player now rewrites `/local/` URLs to use backend API origin (needed for dev where frontend/backend ports differ)
+  - Fixed `scrollIntoView` timing bug using Svelte's `tick()` instead of arbitrary `setTimeout`
+  - Added "LOCAL" badge to distinguish local episodes from podcast episodes in search results
+
+**WHY**: In dev environment, frontend (port 5173) and backend (port 8080) run on different origins. Without URL rewriting, local media URLs failed to load.
+
 ### Added
 - **Static route for local media files** (#11)
   - New `/local/<channel>/<file>` endpoint to serve audio files from the media folder

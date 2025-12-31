@@ -1,6 +1,7 @@
 <script>
   import {AudioPlayer, isPlaying, PlayIcon} from 'svelte-mp3';
   import WaveSpinner from './WaveSpinner.svelte'
+  import {API_ORIGIN} from '../api.js'
 
   export let channel;
   export let episode;
@@ -10,13 +11,21 @@
   let audio = {};
   let isWaiting = false
 
+  // Rewrite /local/ URLs to use backend origin (needed for dev where ports differ)
+  function resolveMediaUrl(url) {
+    if (url && url.startsWith('/local/')) {
+      return API_ORIGIN + url;
+    }
+    return url;
+  }
+
   $: {
     isWaiting = episode;
     durationChanged(null)
   }
 
   $: edate = new Date(episode.date);
-  $: eurl = [media_url];
+  $: eurl = [resolveMediaUrl(media_url)];
 
 
   function canplay(event) {

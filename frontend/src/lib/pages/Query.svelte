@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import CardQueryResult from '../CardQueryResult.svelte'
   import Player from '../Player.svelte'
   import StretchSpinner from '../StretchSpinner.svelte'
@@ -50,14 +50,15 @@
   let time;
   let mediaUrl;
 
-  function click(data) {
+  async function click(data) {
     episodePlay = data.detail.episode
     channelPlay = data.detail.channel
     time = data.detail.time
     mediaUrl = data.detail.media_url
-    setTimeout(() => {
-      player.scrollIntoView()
-    }, 50)
+    await tick()
+    if (player) {
+      player.scrollIntoView({ behavior: 'smooth' })
+    }
   }
 
   function goToQuery(event) {
