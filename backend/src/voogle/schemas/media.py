@@ -38,3 +38,31 @@ class QueryResponse(BaseModel):
     channel: Optional["ChannelOut"]  # type: ignore[misc]
     start: float
     media_url: str
+
+
+class VisualizationPoint(BaseModel):
+    """A single point in the 2D embedding visualization."""
+
+    x: float
+    y: float
+    fragment_id: str
+    label: str
+    preview: str
+    score: float
+    result_index: int
+
+
+class QueryPoint(BaseModel):
+    """The query point in the 2D visualization."""
+
+    x: float
+    y: float
+    label: str = "Your search"
+
+
+class VisualizationResponse(BaseModel):
+    """Response for query visualization endpoint."""
+
+    points: list[VisualizationPoint]
+    query_point: QueryPoint
+    min_results_required: int = 2

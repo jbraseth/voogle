@@ -10,7 +10,7 @@ import fastapi
 from fastapi_pagination import Page
 from fastapi_pagination.ext.ormar import paginate
 
-from voogle import auth, storage, tasks, transcription
+from voogle import auth, storage, tasks, transcription, vector
 from voogle.collection import crawler
 from voogle.models import analytics, media, users
 from voogle.models.media import ChannelKind
@@ -175,3 +175,70 @@ async def query(
             )
         )
     return output
+
+
+@router.get(
+    "/query/visualize",
+    summary="Get 2D visualization coordinates for query results",
+    response_model=media_schemas.VisualizationResponse,
+)
+async def query_visualize(
+    query_text: str,
+    background_tasks: fastapi.BackgroundTasks,
+    k: int = 20,
+    channel_id: Optional[uuid.UUID] = None,
+) -> media_schemas.VisualizationResponse:
+    """Return 2D projected coordinates for search results visualization.
+
+    Projects query and result embeddings to 2D using PCA for scatter plot display.
+    Requires at least 2 results for meaningful projection.
+    """
+    background_tasks.add_task(store_user_query, query_text)
+
+    channel_pk = None
+    if channel_id:
+        channel_pk = (await media.Channel.objects.get(id=channel_id)).pk
+
+    # Get results with their embedding vectors
+    query_embedding, results = tasks.search_for_visualization(
+        query_text, k, channel=channel_pk
+    )
+
+    # Handle edge case: not enough results
+    if len(results) < 2:
+        raise fastapi.HTTPException(
+            status_code=400,
+            detail=f"Need at least 2 results for visualization, got {len(results)}",
+        )
+
+    # Project to 2D
+    result_vectors = [r.vector for r in results]
+    responses = [r.response for r in results]
+
+    projection = vector.project_embeddings_2d(
+        query_embedding, result_vectors, responses
+    )
+
+    # Build response with result indices for click-to-scroll
+    points = [
+        media_schemas.VisualizationPoint(
+            x=p.x,
+            y=p.y,
+            fragment_id=p.fragment_id,
+            label=p.label,
+            preview=p.preview,
+            score=p.score,
+            result_index=i,
+        )
+        for i, p in enumerate(projection.points)
+    ]
+
+    query_point = media_schemas.QueryPoint(
+        x=projection.query_point[0],
+        y=projection.query_point[1],
+    )
+
+    return media_schemas.VisualizationResponse(
+        points=points,
+        query_point=query_point,
+    )

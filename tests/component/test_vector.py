@@ -214,3 +214,172 @@ def test_get_embeddings_provider_by_name_invalid() -> None:
     """Verify invalid provider name raises error."""
     with pytest.raises(ValueError, match="Unknown provider"):
         embedding.get_embeddings_provider_by_name("invalid")
+
+
+# --- 2D Projection Tests ---
+
+
+import numpy as np
+
+
+@pytest.mark.description("Tests 2D projection with typical result set")
+def test_project_embeddings_2d_basic() -> None:
+    """Test basic 2D projection with mock embeddings."""
+    # Create mock query embedding
+    query_emb = np.random.randn(1, 384).astype(np.float32)
+
+    # Create mock result embeddings (5 results)
+    result_embs = [np.random.randn(384).astype(np.float32) for _ in range(5)]
+
+    # Create mock QueryResponse objects
+    results = [
+        vector.QueryResponse(
+            score=0.9 - i * 0.1,
+            episode=i,
+            channel=1,
+            start_secs=i * 60,
+            end_secs=i * 60 + 30,
+            text=f"This is the text for result {i} with some content.",
+        )
+        for i in range(5)
+    ]
+
+    projection = vector.project_embeddings_2d(query_emb, result_embs, results)
+
+    # Verify structure
+    assert len(projection.points) == 5
+    assert projection.query_point is not None
+    assert len(projection.query_point) == 2
+
+    # Verify each point has correct structure
+    for i, point in enumerate(projection.points):
+        assert isinstance(point.x, float)
+        assert isinstance(point.y, float)
+        assert point.fragment_id == f"{i}_{i * 60}"
+        assert point.score == results[i].score
+
+
+@pytest.mark.description("Tests projection fails with fewer than 2 results")
+def test_project_embeddings_2d_too_few_results() -> None:
+    """Test projection raises error with fewer than 2 results."""
+    query_emb = np.random.randn(1, 384).astype(np.float32)
+    result_embs = [np.random.randn(384).astype(np.float32)]
+    results = [
+        vector.QueryResponse(
+            score=0.9,
+            episode=1,
+            channel=1,
+            start_secs=0,
+            end_secs=30,
+            text="Single result text.",
+        )
+    ]
+
+    with pytest.raises(ValueError, match="At least 2 result embeddings required"):
+        vector.project_embeddings_2d(query_emb, result_embs, results)
+
+
+@pytest.mark.description("Tests projection fails when all embeddings are identical")
+def test_project_embeddings_2d_identical_embeddings() -> None:
+    """Test projection raises error when all embeddings are identical."""
+    # Create identical embeddings
+    identical = np.ones(384).astype(np.float32)
+    query_emb = identical.reshape(1, -1)
+    result_embs = [identical.copy() for _ in range(3)]
+
+    results = [
+        vector.QueryResponse(
+            score=0.9 - i * 0.1,
+            episode=i,
+            channel=1,
+            start_secs=i * 60,
+            end_secs=i * 60 + 30,
+            text=f"Result {i}",
+        )
+        for i in range(3)
+    ]
+
+    with pytest.raises(ValueError, match="All embeddings are identical"):
+        vector.project_embeddings_2d(query_emb, result_embs, results)
+
+
+@pytest.mark.description("Tests projection with 20 results (typical use case)")
+def test_project_embeddings_2d_typical_size() -> None:
+    """Test projection with 20 results (typical visualization size)."""
+    query_emb = np.random.randn(1, 384).astype(np.float32)
+    result_embs = [np.random.randn(384).astype(np.float32) for _ in range(20)]
+    results = [
+        vector.QueryResponse(
+            score=0.9 - i * 0.02,
+            episode=i,
+            channel=1,
+            start_secs=i * 60,
+            end_secs=i * 60 + 30,
+            text=f"Result text number {i} with more content here.",
+        )
+        for i in range(20)
+    ]
+
+    projection = vector.project_embeddings_2d(query_emb, result_embs, results)
+
+    assert len(projection.points) == 20
+    assert projection.query_point is not None
+
+
+@pytest.mark.description("Tests projection with exactly 2 results (edge case)")
+def test_project_embeddings_2d_minimum_results() -> None:
+    """Test projection with exactly 2 results (minimum required)."""
+    query_emb = np.random.randn(1, 384).astype(np.float32)
+    result_embs = [np.random.randn(384).astype(np.float32) for _ in range(2)]
+    results = [
+        vector.QueryResponse(
+            score=0.9 - i * 0.1,
+            episode=i,
+            channel=1,
+            start_secs=i * 60,
+            end_secs=i * 60 + 30,
+            text=f"Result {i}",
+        )
+        for i in range(2)
+    ]
+
+    projection = vector.project_embeddings_2d(query_emb, result_embs, results)
+
+    assert len(projection.points) == 2
+    assert projection.query_point is not None
+    # All points should have valid coordinates
+    for point in projection.points:
+        assert not np.isnan(point.x)
+        assert not np.isnan(point.y)
+
+
+@pytest.mark.description("Tests that search_with_vectors returns embedding vectors")
+async def test_search_with_vectors(
+    fake_episode: models.media.Episode,
+    local_provider: embedding.LocalEmbeddingsProvider,
+) -> None:
+    """Test that search_with_vectors returns result vectors for visualization."""
+    client = vector.get_client()
+    dbname = "test-vectors"
+
+    # Load and store embeddings
+    tr = transcription.read_transcription(
+        await storage.transcription_file(fake_episode)
+    )
+    embs, fragments = embedding._transcription_embeddings(
+        tr, local_provider, embedding.DEFAULT_FRAGMENT_WORDS
+    )
+
+    vector.ensure_collection(client, dbname, local_provider.get_embedding_dimension())
+    await vector.add_episode(fake_episode, client, embs, dbname, fragments)
+
+    # Search with vectors
+    query = embedding.text2embedding("playing golf with other people", local_provider)
+    results = vector.search_with_vectors(client, query, dbname, 3)
+
+    assert len(results) == 3
+    for r in results:
+        assert r.response.text
+        assert r.response.score
+        assert isinstance(r.vector, np.ndarray)
+        assert r.vector.shape == (384,)  # Local model dimension

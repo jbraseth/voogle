@@ -2,6 +2,7 @@
   import { onMount, tick } from "svelte";
   import CardQueryResult from '../CardQueryResult.svelte'
   import Player from '../Player.svelte'
+  import ResultMap from '../ResultMap.svelte'
   import StretchSpinner from '../StretchSpinner.svelte'
   import {API_URL} from '../../api.js'
   import {channels} from '../../stores.js'
@@ -11,14 +12,19 @@
   let query = qs.get("q")
   let queryLoading = false;
   let queryResults;
+  let visualizationData = null;
+  let visualizationLoading = false;
+  let showVisualization = false;
 
   let selectedChannel;
   let player;
+  let resultCards = [];
 
   async function doQuery(query) {
     if (query.length > 0) {
       queryLoading = true
       queryResults = false;
+      visualizationData = null;
       history.replaceState(history.state, "", "?q=" + query);
       let params = new URLSearchParams({query_text: query, k: 6})
       if (selectedChannel) {
@@ -26,6 +32,50 @@
       }
       await fetch(`${API_URL}/media/query?${params}`).then(r => r.json()).then(data => {queryResults = data;});
       queryLoading = false
+
+      // Fetch visualization data after results load (if enabled)
+      if (showVisualization && queryResults && queryResults.length >= 2) {
+        fetchVisualization(query);
+      }
+    }
+  }
+
+  async function fetchVisualization(queryText) {
+    visualizationLoading = true;
+    let params = new URLSearchParams({query_text: queryText, k: 20})
+    if (selectedChannel) {
+      params.set('channel_id', selectedChannel)
+    }
+    try {
+      const response = await fetch(`${API_URL}/media/query/visualize?${params}`);
+      if (response.ok) {
+        visualizationData = await response.json();
+      } else {
+        visualizationData = null;
+      }
+    } catch (e) {
+      console.error('Visualization fetch error:', e);
+      visualizationData = null;
+    }
+    visualizationLoading = false;
+  }
+
+  function toggleVisualization() {
+    showVisualization = !showVisualization;
+    if (showVisualization && queryResults && queryResults.length >= 2 && !visualizationData) {
+      fetchVisualization(query);
+    }
+  }
+
+  function handlePointClick(event) {
+    const { resultIndex } = event.detail;
+    if (resultCards[resultIndex]) {
+      resultCards[resultIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Add a brief highlight effect
+      resultCards[resultIndex].classList.add('ring-2', 'ring-primary');
+      setTimeout(() => {
+        resultCards[resultIndex].classList.remove('ring-2', 'ring-primary');
+      }, 2000);
     }
   }
 
@@ -128,10 +178,33 @@
     </div>
   {/if}
   {#if queryResults}
-    <div class="flex flex-row mt-10 mx-10">
+    <!-- Visualization toggle and map -->
+    <div class="mx-5 md:mx-16 mt-4">
+      <button
+        class="btn btn-sm btn-outline gap-2"
+        class:btn-active={showVisualization}
+        on:click={toggleVisualization}
+        data-testid="toggle-visualization">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+        </svg>
+        {showVisualization ? 'Hide' : 'Show'} Result Map
+      </button>
+
+      {#if showVisualization}
+        <ResultMap
+          {visualizationData}
+          loading={visualizationLoading}
+          on:pointclick={handlePointClick} />
+      {/if}
+    </div>
+
+    <div class="flex flex-row mt-6 mx-10">
       <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 w-full">
-	{#each queryResults as result }
-	  <CardQueryResult  on:click={click} result={result} />
+	{#each queryResults as result, i }
+	  <div bind:this={resultCards[i]} class="transition-all duration-300">
+	    <CardQueryResult on:click={click} result={result} />
+	  </div>
 	{/each}
       </div>
     </div>
