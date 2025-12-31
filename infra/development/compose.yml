@@ -53,6 +53,8 @@ services:
       - VITE_API_HOST=${VITE_API_HOST}
       - VITE_API_PORT=${VITE_API_PORT}
       - VITE_API_PREFIX=${VITE_API_PREFIX}
+      # Backend target for Vite proxy (Docker service hostname)
+      - VITE_BACKEND_TARGET=http://backend:80
     volumes:
       - ../../frontend/src:/frontend/src
       - ../../frontend/public:/frontend/public

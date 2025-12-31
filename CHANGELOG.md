@@ -9,6 +9,14 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Fixed
+- **Dev mode works natively and in Docker** (#15)
+  - Vite proxy target now configurable via `VITE_BACKEND_TARGET` environment variable
+  - Native dev defaults to `http://localhost:8080` (backend `make start` port)
+  - Docker dev sets `VITE_BACKEND_TARGET=http://backend:80` in compose.yml
+  - Dev mode continues to have no CORS restrictions (permissive for browser extensions)
+
+**WHY**: The hardcoded `http://backend:80` proxy target only worked inside Docker. Native development (frontend `npm run dev` + backend `make start`) requires routing to `localhost:8080`.
+
 - **Frontend local media playback** (#13)
   - Player now rewrites `/local/` URLs to use backend API origin (needed for dev where frontend/backend ports differ)
   - Fixed `scrollIntoView` timing bug using Svelte's `tick()` instead of arbitrary `setTimeout`
