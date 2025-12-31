@@ -25,6 +25,24 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 **REASONING**: Disabled by default with multiple guard layers ensures zero chance of accidental production exposure. Localhost-only by default prevents security issues. CLI detection fails loud (no silent fallbacks). Uses existing search infrastructure to minimize code duplication.
 
+- **BibleProject Classroom adapter with multi-artifact RSS** (#31)
+  - New `backend/src/voogle/sources/bibleproject.py` adapter module
+  - `extract_mux_playback_ids(html)`: Detect Mux video players on session pages
+  - `extract_pdf_url(html)`: Detect teacher notes PDF download links
+  - `parse_session(html, ...)`: Parse sessions with main video and optional PDF
+  - `emit_rss(sessions, output_path)`: Generate RSS with separate items for each artifact
+  - `BibleProjectAdapter`: Full adapter implementing `SourceAdapter` protocol
+  - Data types: `ArtifactType` enum, `SessionArtifact`, `CompoundSession`
+  - Clear title convention: "{Session Title} - Main Video/Teacher Notes"
+  - GUID format: `bibleproject:{course_slug}:{session_id}:{artifact_type}`
+  - Correct MIME types: `video/mp4` for video, `application/pdf` for notes
+  - Test fixtures for artifact combinations (main-only, main+pdf)
+  - Registered in `generator.py` for automatic discovery
+
+**WHY**: BibleProject Classroom sessions contain multiple learning artifacts (main video, PDF notes). Previously only video could be indexed, causing users to miss summaries in PDFs when searching.
+
+**REASONING**: Each artifact becomes a separate RSS item for independent indexing. Clear title suffixes help users distinguish content types. Regex-based Mux detection covers common embedding patterns without browser automation. Slides are synchronized images (not separate videos) - handled by future player feature.
+
 - **Multi-provider embeddings with consistent metadata** (#25)
   - `EmbeddingsProvider.model_name` and `provider_name` properties for tracking
   - Qdrant payload now includes `embedding_model`, `embedding_provider`, `embedded_at`
