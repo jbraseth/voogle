@@ -13,7 +13,10 @@
 
 set -e
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOTDIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+cd "$SCRIPT_DIR"
 
 # Source common environment variables
 source ./common_env.sh
@@ -21,11 +24,11 @@ source ./common_env.sh
 # Use both compose files (base + test override)
 COMPOSE_FILES="-f ../../infra/development/compose.yml -f compose.test.yml"
 
-# Ensure test results directory exists
-mkdir -p ../test_results
+# Ensure test results directory exists (absolute path)
+mkdir -p "$ROOTDIR/tests/test_results"
 
-# Default pytest args with JUnit XML output
-DEFAULT_ARGS="--junit-xml=tests/test_results/test-results.xml"
+# Default pytest args with JUnit XML output (absolute path inside container maps to /app)
+DEFAULT_ARGS="--junit-xml=/app/tests/test_results/test-results.xml"
 
 # If user provided args, append them; otherwise use -v as default
 if [ $# -eq 0 ]; then
@@ -35,7 +38,7 @@ else
 fi
 
 echo "Running tests..."
-echo "  JUnit XML: tests/test_results/test-results.xml"
+echo "  JUnit XML: $ROOTDIR/tests/test_results/test-results.xml"
 echo ""
 
 docker compose $COMPOSE_FILES run --rm --no-deps \
