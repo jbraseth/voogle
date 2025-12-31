@@ -4,7 +4,462 @@ Active tasks and implementation plans for Voogle.
 
 ---
 
-## Active: Refresh Episode URL Capability (Issue #24)
+## Active: BibleProject Classroom Compound Episodes (Issue #31)
+
+**Goal**: Extend the BibleProject Classroom scraper to detect compound sessions: pages that contain multiple Mux playback IDs (main video + slides video) plus PDF teacher notes. Generate RSS feeds that emit separate items for each artifact so Voogle can index them independently.
+
+**Status**: Planning
+
+**Branch**: `feat/31-bibleproject-compound-episodes`
+
+**Issue**: https://github.com/jbraseth/voogle/issues/31
+
+**Milestone**: D - BibleProject Classroom Rich Series
+
+---
+
+### Problem Statement
+
+BibleProject Classroom session pages often contain multiple learning artifacts:
+1. **Main video** - The primary lesson content (Mux playback ID)
+2. **Slides video** - Optional presentation slides as video (separate Mux playback ID)
+3. **Teacher notes PDF** - Optional downloadable PDF with lesson notes
+
+Currently, if a scraper only extracts the main video, users searching for specific diagram content (found in slides) or lesson summaries (in PDFs) will get incomplete results. A theology student preparing a class presentation could miss key diagrams that were only in the slides video.
+
+---
+
+### Architecture Overview
+
+This feature creates a new BibleProject adapter following the existing `SourceAdapter` protocol pattern from `backend/src/voogle/sources/`. The adapter will:
+
+1. Parse session pages to extract all Mux playback IDs and PDF URLs
+2. Generate RSS feeds with separate `<item>` entries for each artifact
+3. Use clear naming conventions to distinguish artifact types
+
+**Data Flow**:
+```
+Session Page HTML
+    ↓
+bibleproject.parse_session(html) → CompoundSession
+    ↓
+CompoundSession contains:
+  - main_video: SessionArtifact (Mux ID, "main")
+  - slides_video: SessionArtifact | None (Mux ID, "slides")
+  - teacher_notes: SessionArtifact | None (PDF URL, "pdf")
+    ↓
+bibleproject.emit_rss(sessions) → RSS XML
+    ↓
+Each artifact becomes separate <item>:
+  - "Session 1 - Main Video" with video/mp4 enclosure
+  - "Session 1 - Slides" with video/mp4 enclosure
+  - "Session 1 - Teacher Notes" with application/pdf enclosure
+```
+
+---
+
+### Data Types
+
+```python
+# backend/src/voogle/sources/bibleproject.py
+
+from dataclasses import dataclass
+from enum import Enum
+
+
+class ArtifactType(Enum):
+    """Type of learning artifact in a session."""
+    MAIN_VIDEO = "main"
+    SLIDES_VIDEO = "slides"
+    TEACHER_NOTES = "pdf"
+
+
+@dataclass(frozen=True)
+class SessionArtifact:
+    """A single artifact within a compound session."""
+    artifact_type: ArtifactType
+    url: str  # Mux stream URL or PDF URL
+    mux_playback_id: str | None  # Only for video artifacts
+    title_suffix: str  # "Main Video", "Slides", "Teacher Notes"
+    mime_type: str  # "video/mp4", "application/pdf"
+
+    @property
+    def is_video(self) -> bool:
+        return self.artifact_type in (ArtifactType.MAIN_VIDEO, ArtifactType.SLIDES_VIDEO)
+
+
+@dataclass
+class CompoundSession:
+    """A session page that may contain multiple artifacts."""
+    session_id: str
+    session_title: str
+    session_url: str
+    course_title: str
+    description: str
+    artifacts: list[SessionArtifact]
+
+    @property
+    def main_video(self) -> SessionArtifact | None:
+        return next((a for a in self.artifacts if a.artifact_type == ArtifactType.MAIN_VIDEO), None)
+
+    @property
+    def slides_video(self) -> SessionArtifact | None:
+        return next((a for a in self.artifacts if a.artifact_type == ArtifactType.SLIDES_VIDEO), None)
+
+    @property
+    def teacher_notes(self) -> SessionArtifact | None:
+        return next((a for a in self.artifacts if a.artifact_type == ArtifactType.TEACHER_NOTES), None)
+```
+
+---
+
+### Module Interface
+
+```python
+# backend/src/voogle/sources/bibleproject.py
+
+import logging
+from pathlib import Path
+
+from voogle.sources import LocalFeed, SourceAdapter
+
+logger = logging.getLogger(__name__)
+
+
+def extract_mux_playback_ids(html: str) -> list[str]:
+    """Extract all Mux playback IDs from session page HTML.
+
+    Mux players are typically embedded with playback IDs in:
+    - data-playback-id attributes
+    - mux-player custom elements
+    - JavaScript configuration objects
+
+    Returns list of playback IDs in order of appearance.
+    """
+
+
+def extract_pdf_url(html: str) -> str | None:
+    """Extract teacher notes PDF URL from session page HTML.
+
+    Look for download links with:
+    - .pdf extension in href
+    - "teacher notes" or "download" in link text
+    - PDF icon/indicator elements
+    """
+
+
+def parse_session(html: str, session_url: str) -> CompoundSession:
+    """Parse a session page into a CompoundSession with all artifacts.
+
+    Args:
+        html: Raw HTML of the session page
+        session_url: URL of the session page
+
+    Returns:
+        CompoundSession with all detected artifacts
+
+    Raises:
+        ValueError: If no main video found (required)
+    """
+
+
+def mux_stream_url(playback_id: str) -> str:
+    """Convert Mux playback ID to HLS stream URL.
+
+    Returns URL in format: https://stream.mux.com/{playback_id}.m3u8
+    """
+
+
+class BibleProjectAdapter(SourceAdapter):
+    """Adapter for BibleProject Classroom content.
+
+    Reads course configurations from data/local/bibleproject/
+    Generates RSS feeds to data/generated-feeds/bibleproject/
+    """
+
+    def __init__(self, config_dir: Path, output_dir: Path) -> None:
+        self._config_dir = config_dir
+        self._output_dir = output_dir
+
+    @property
+    def adapter_id(self) -> str:
+        return "bibleproject"
+
+    @property
+    def config_dir(self) -> Path:
+        return self._config_dir
+
+    @property
+    def output_dir(self) -> Path:
+        return self._output_dir
+
+    def generate_feeds(self) -> list[LocalFeed]:
+        """Generate RSS feeds from BibleProject course configs."""
+```
+
+---
+
+### RSS Encoding Strategy
+
+Each artifact becomes a separate RSS `<item>` with a clear title suffix:
+
+```xml
+<rss version="2.0">
+  <channel>
+    <title>BibleProject Classroom: How to Read the Bible</title>
+    <link>https://classroom.bibleproject.com/courses/how-to-read</link>
+
+    <!-- Session 1 has all three artifacts -->
+    <item>
+      <title>Session 1: Introduction - Main Video</title>
+      <description>Primary lesson content for Session 1</description>
+      <guid>bibleproject:htrtb:s1:main</guid>
+      <enclosure url="https://stream.mux.com/abc123.m3u8" type="video/mp4" />
+    </item>
+    <item>
+      <title>Session 1: Introduction - Slides</title>
+      <description>Presentation slides for Session 1</description>
+      <guid>bibleproject:htrtb:s1:slides</guid>
+      <enclosure url="https://stream.mux.com/def456.m3u8" type="video/mp4" />
+    </item>
+    <item>
+      <title>Session 1: Introduction - Teacher Notes</title>
+      <description>Downloadable PDF notes for Session 1</description>
+      <guid>bibleproject:htrtb:s1:pdf</guid>
+      <enclosure url="https://classroom.bibleproject.com/downloads/s1-notes.pdf"
+                 type="application/pdf" />
+    </item>
+
+    <!-- Session 2 only has main video -->
+    <item>
+      <title>Session 2: Reading Narrative - Main Video</title>
+      <description>Primary lesson content for Session 2</description>
+      <guid>bibleproject:htrtb:s2:main</guid>
+      <enclosure url="https://stream.mux.com/ghi789.m3u8" type="video/mp4" />
+    </item>
+  </channel>
+</rss>
+```
+
+**GUID Format**: `bibleproject:{course_slug}:{session_id}:{artifact_type}`
+
+**Title Format**: `{Session Title} - {Artifact Suffix}`
+- Main Video: "Session 1: Introduction - Main Video"
+- Slides: "Session 1: Introduction - Slides"
+- Teacher Notes: "Session 1: Introduction - Teacher Notes"
+
+---
+
+### Mux Playback ID Detection
+
+Mux video players can be identified by several patterns in the HTML:
+
+```python
+# Pattern 1: mux-player custom element
+# <mux-player playback-id="abc123" ...></mux-player>
+MUX_PLAYER_PATTERN = re.compile(r'<mux-player[^>]*playback-id=["\']([a-zA-Z0-9]+)["\']')
+
+# Pattern 2: data attribute on container
+# <div data-mux-playback-id="abc123">
+DATA_ATTR_PATTERN = re.compile(r'data-(?:mux-)?playback-id=["\']([a-zA-Z0-9]+)["\']')
+
+# Pattern 3: JavaScript config object
+# Mux.Video({ playbackId: "abc123" })
+# { "playbackId": "abc123" }
+JS_CONFIG_PATTERN = re.compile(r'playback[_-]?[Ii]d["\']?\s*[:=]\s*["\']([a-zA-Z0-9]+)["\']')
+```
+
+**Detection Strategy**:
+1. Parse HTML with regex patterns (fast, no browser needed)
+2. Extract all matching playback IDs
+3. First ID is typically main video, second is slides (if present)
+4. Validate by checking Mux stream URL responds
+
+---
+
+### Test Fixtures Strategy
+
+Create recorded HTML fixtures for session pages with various artifact combinations:
+
+```
+tests/fixtures/bibleproject/
+├── session_main_only.html        # Only main video
+├── session_main_slides.html      # Main + slides video
+├── session_all_artifacts.html    # Main + slides + PDF
+├── session_main_pdf.html         # Main + PDF (no slides)
+└── course_metadata.json          # Course-level metadata
+```
+
+**Fixture Recording Process**:
+1. Capture real session page HTML (with permission or from public pages)
+2. Sanitize/anonymize if needed
+3. Store minimal HTML that contains the detection patterns
+4. Add inline comments marking the expected extraction points
+
+**Test Coverage**:
+```python
+class TestExtractMuxPlaybackIds:
+    @pytest.mark.description("Extract single Mux playback ID from main-only session")
+    def test_main_only(self, main_only_html: str) -> None:
+        ids = extract_mux_playback_ids(main_only_html)
+        assert len(ids) == 1
+        assert ids[0] == "expected_main_id"
+
+    @pytest.mark.description("Extract both Mux playback IDs from main+slides session")
+    def test_main_and_slides(self, main_slides_html: str) -> None:
+        ids = extract_mux_playback_ids(main_slides_html)
+        assert len(ids) == 2
+        # Order matters: main first, slides second
+
+
+class TestParseSession:
+    @pytest.mark.description("Parse session with all artifacts")
+    def test_all_artifacts(self, all_artifacts_html: str) -> None:
+        session = parse_session(all_artifacts_html, "https://example.com/session/1")
+        assert session.main_video is not None
+        assert session.slides_video is not None
+        assert session.teacher_notes is not None
+        assert len(session.artifacts) == 3
+
+
+class TestRssGeneration:
+    @pytest.mark.description("Session with 3 artifacts produces 3 RSS items")
+    def test_compound_session_rss(self) -> None:
+        session = CompoundSession(
+            session_id="s1",
+            session_title="Introduction",
+            # ... with all 3 artifacts
+        )
+        rss_xml = emit_rss([session], output_path)
+
+        tree = ET.parse(output_path)
+        items = tree.findall(".//item")
+        assert len(items) == 3
+
+        # Verify MIME types
+        enclosures = [item.find("enclosure") for item in items]
+        types = [e.get("type") for e in enclosures]
+        assert "video/mp4" in types
+        assert "application/pdf" in types
+```
+
+---
+
+### Implementation Steps
+
+#### Step 1: Create fixture HTML files
+- [ ] Record or create minimal HTML fixtures for each artifact combination
+- [ ] Document expected extraction results in fixture comments
+- [ ] Add fixtures to `tests/fixtures/bibleproject/`
+
+#### Step 2: Implement extraction functions
+- [ ] `extract_mux_playback_ids(html)` with regex patterns
+- [ ] `extract_pdf_url(html)` for teacher notes
+- [ ] Unit tests for each extraction function
+
+#### Step 3: Implement session parsing
+- [ ] `parse_session(html, url)` combining extractions
+- [ ] `CompoundSession` and `SessionArtifact` dataclasses
+- [ ] Unit tests for session parsing
+
+#### Step 4: Implement RSS generation
+- [ ] `emit_rss(sessions, output_path)` with multi-item encoding
+- [ ] Correct MIME types for each artifact type
+- [ ] GUID generation for stable episode identifiers
+- [ ] Unit tests for RSS structure
+
+#### Step 5: Implement BibleProjectAdapter
+- [ ] Follow `SourceAdapter` protocol from `sources/__init__.py`
+- [ ] Config file format for courses
+- [ ] Integration with existing generator
+
+#### Step 6: Add integration tests
+- [ ] Test generated RSS is parseable by `collection/feed.py`
+- [ ] Test full adapter workflow with fixture configs
+
+---
+
+### Files Created/Modified
+
+**Created**:
+- `backend/src/voogle/sources/bibleproject.py` - Main adapter module
+- `tests/fixtures/bibleproject/session_main_only.html`
+- `tests/fixtures/bibleproject/session_main_slides.html`
+- `tests/fixtures/bibleproject/session_all_artifacts.html`
+- `tests/fixtures/bibleproject/session_main_pdf.html`
+- `tests/unit/sources/test_bibleproject.py`
+
+**Modified**:
+- `backend/src/voogle/sources/generator.py` - Register new adapter
+- `CHANGELOG.md` - Document new feature
+
+---
+
+### Success Criteria
+
+- [ ] Scraper correctly identifies all Mux playback IDs on a session page
+- [ ] Sessions with only main video produce 1 RSS item
+- [ ] Sessions with main + slides produce 2 RSS items
+- [ ] Sessions with main + slides + PDF produce 3 RSS items
+- [ ] RSS items have clear, distinguishable titles
+- [ ] PDF enclosures have correct MIME type (application/pdf)
+- [ ] Tests pass using recorded fixtures (no live scraping in CI)
+
+---
+
+### Verification (REQUIRED before marking complete)
+
+Run these commands and confirm ALL pass:
+
+```bash
+# 1. Lint (must pass)
+cd backend && ruff check .
+
+# 2. Unit + Integration tests (must pass)
+pytest tests/ --ignore=tests/e2e -v
+
+# 3. E2E tests (must pass) - requires frontend + backend running
+pytest tests/e2e -v
+```
+
+**Do NOT skip E2E tests.** If E2E tests fail or cannot run, that is a blocker.
+
+---
+
+### Expert Persona Reviews
+
+**Scraping Engineer (Mux Detection)**:
+- Multiple regex patterns cover common Mux embedding styles
+- Order of playback IDs assumed (main first, slides second) - document assumption
+- Consider fallback to DOM parsing if regex fails
+
+**Data Modeler (RSS Encoding)**:
+- GUID format ensures uniqueness across courses/sessions/artifacts
+- Title suffix pattern is clear and searchable
+- MIME types are standard (video/mp4, application/pdf)
+
+**Brutal Critic (Missing Slides Scenario)**:
+- ✅ Theology student now gets all artifacts indexed
+- ✅ Clear titles distinguish main video from slides
+- ✅ PDF enclosures enable full-text search of notes
+
+---
+
+### Open Questions
+
+1. **Mux stream URL format**: Is `https://stream.mux.com/{id}.m3u8` the correct format?
+   - Need to verify against actual BibleProject pages
+
+2. **Playback ID ordering**: How to distinguish main video from slides when multiple IDs found?
+   - Option A: Rely on DOM order (first = main)
+   - Option B: Look for surrounding context (e.g., "slides" label)
+
+3. **Authentication**: Do session pages require login?
+   - If yes, adapter needs cookie/session handling
+
+---
+
+## Previous: Refresh Episode URL Capability (Issue #24)
 
 **Goal**: Add capability to refresh episode URLs when enclosure URLs return 404, recovering without deleting the episode or losing transcription/embedding work.
 

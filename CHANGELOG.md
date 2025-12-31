@@ -9,6 +9,24 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Added
+- **BibleProject Classroom compound episodes with multi-artifact RSS** (#31)
+  - New `backend/src/voogle/sources/bibleproject.py` adapter module
+  - `extract_mux_playback_ids(html)`: Detect multiple Mux video players on session pages
+  - `extract_pdf_url(html)`: Detect teacher notes PDF download links
+  - `parse_session(html, ...)`: Parse compound sessions with main video, slides video, and PDF
+  - `emit_rss(sessions, output_path)`: Generate RSS with separate items for each artifact
+  - `BibleProjectAdapter`: Full adapter implementing `SourceAdapter` protocol
+  - Data types: `ArtifactType` enum, `SessionArtifact`, `CompoundSession`
+  - Clear title convention: "{Session Title} - Main Video/Slides/Teacher Notes"
+  - GUID format: `bibleproject:{course_slug}:{session_id}:{artifact_type}`
+  - Correct MIME types: `video/mp4` for videos, `application/pdf` for notes
+  - Test fixtures for 4 artifact combinations (main-only, main+slides, main+pdf, all)
+  - Registered in `generator.py` for automatic discovery
+
+**WHY**: BibleProject Classroom session pages often contain multiple learning artifacts (main video, slides video, PDF notes). Previously only the main video could be indexed, causing users to miss diagrams in slides or summaries in PDFs when searching.
+
+**REASONING**: Each artifact becomes a separate RSS item for independent indexing. Clear title suffixes help users distinguish content types. Regex-based Mux detection covers common embedding patterns without browser automation. Recorded HTML fixtures enable CI testing without live scraping.
+
 - **Multi-provider embeddings with consistent metadata** (#25)
   - `EmbeddingsProvider.model_name` and `provider_name` properties for tracking
   - Qdrant payload now includes `embedding_model`, `embedding_provider`, `embedded_at`
