@@ -16,7 +16,7 @@ pytestmark = pytest.mark.component
 def fixture_local_provider() -> embedding.LocalEmbeddingsProvider:
     """Fixture for local embeddings provider."""
     model = embedding.load_embeddings_model(embedding.DEFAULT_EMBEDDINGS_MODEL)
-    return embedding.LocalEmbeddingsProvider(model)
+    return embedding.LocalEmbeddingsProvider(model, model_name=embedding.DEFAULT_EMBEDDINGS_MODEL)
 
 
 @pytest.fixture(name="mock_openai_provider")
@@ -144,3 +144,73 @@ async def test_store_embeddings(
         assert r.score
         assert r.start_secs
         assert r.end_secs
+
+
+@pytest.mark.description("Tests that LocalEmbeddingsProvider exposes correct properties")
+def test_local_provider_properties(
+    local_provider: embedding.LocalEmbeddingsProvider,
+) -> None:
+    """Verify protocol properties are implemented."""
+    assert local_provider.model_name == embedding.DEFAULT_EMBEDDINGS_MODEL
+    assert local_provider.provider_name == "local"
+    assert local_provider.get_embedding_dimension() == 384
+
+
+@pytest.mark.description("Tests that OpenAI provider exposes correct properties")
+def test_openai_provider_properties(
+    mock_openai_provider: embedding.OpenAIEmbeddingsProvider,
+) -> None:
+    """Verify OpenAI provider properties."""
+    assert mock_openai_provider.model_name == "text-embedding-3-small"
+    assert mock_openai_provider.provider_name == "openai"
+    assert mock_openai_provider.get_embedding_dimension() == 1536
+
+
+@pytest.mark.description("Tests that embedding metadata is added to Qdrant payload")
+async def test_metadata_in_payload(
+    fake_episode: models.media.Episode,
+    local_provider: embedding.LocalEmbeddingsProvider,
+) -> None:
+    """Verify embedding metadata is stored in Qdrant payload."""
+    from datetime import datetime
+
+    client = vector.get_client()
+    dbname = "test-metadata"
+
+    tr = transcription.read_transcription(
+        await storage.transcription_file(fake_episode)
+    )
+    embs, fragments = embedding._transcription_embeddings(
+        tr, local_provider, embedding.DEFAULT_FRAGMENT_WORDS
+    )
+
+    vector.ensure_collection(client, dbname, local_provider.get_embedding_dimension())
+    await vector.add_episode(
+        fake_episode, client, embs, dbname, fragments, local_provider
+    )
+
+    # Verify metadata
+    results, _ = client.scroll(collection_name=dbname, limit=1)
+    assert len(results) > 0
+    payload = results[0].payload
+
+    assert payload["embedding_model"] == embedding.DEFAULT_EMBEDDINGS_MODEL
+    assert payload["embedding_provider"] == "local"
+    assert "embedded_at" in payload
+    # Verify timestamp is valid ISO format
+    datetime.fromisoformat(payload["embedded_at"])
+
+
+@pytest.mark.description("Tests explicit provider factory function")
+def test_get_embeddings_provider_by_name_local() -> None:
+    """Verify explicit local provider creation works."""
+    provider = embedding.get_embeddings_provider_by_name("local")
+    assert provider.provider_name == "local"
+    assert provider.model_name == embedding.DEFAULT_EMBEDDINGS_MODEL
+
+
+@pytest.mark.description("Tests that unknown provider raises ValueError")
+def test_get_embeddings_provider_by_name_invalid() -> None:
+    """Verify invalid provider name raises error."""
+    with pytest.raises(ValueError, match="Unknown provider"):
+        embedding.get_embeddings_provider_by_name("invalid")

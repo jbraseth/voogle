@@ -10,6 +10,7 @@ import functools
 import logging
 import pathlib
 import uuid
+from datetime import datetime, timezone
 from functools import cache
 from typing import NamedTuple, Optional, Union
 
@@ -124,17 +125,38 @@ def ensure_collection(
         create_collection(client, collection_name, vector_dimension)
 
 
-def _gen_metadata(fragment: embedding.Fragment, episode: Episode) -> dict:
-    # additional metadata we store in the vector database for each fragment
+def _gen_metadata(
+    fragment: embedding.Fragment,
+    episode: Episode,
+    provider: Optional[embedding.EmbeddingsProvider] = None,
+) -> dict:
+    """Generate metadata payload for a fragment stored in Qdrant.
+
+    Args:
+        fragment: The text fragment being stored.
+        episode: The episode this fragment belongs to.
+        provider: Optional embeddings provider to include model/provider metadata.
+
+    Returns:
+        Dictionary of metadata fields for the Qdrant payload.
+    """
     if episode.channel is None:
         raise ValueError(f"Episode {episode.pk} has no associated channel")
-    return {
+
+    metadata = {
         "episode": episode.pk,
         "channel": episode.channel.pk,
         "start_secs": fragment.start_secs,
         "end_secs": fragment.end_secs,
         "text": fragment.text,
     }
+
+    if provider is not None:
+        metadata["embedding_model"] = provider.model_name
+        metadata["embedding_provider"] = provider.provider_name
+        metadata["embedded_at"] = datetime.now(timezone.utc).isoformat()
+
+    return metadata
 
 
 async def add_episode(
@@ -143,10 +165,17 @@ async def add_episode(
     embeddings: embedding.Embeddings,
     collection_name: str,
     fragments: list[embedding.Fragment],
+    provider: Optional[embedding.EmbeddingsProvider] = None,
 ) -> None:
-    """Store the given embeddings from an episode in the vector
-    database.
+    """Store the given embeddings from an episode in the vector database.
 
+    Args:
+        episode: Episode to store embeddings for.
+        client: Qdrant client.
+        embeddings: Embedding vectors to store.
+        collection_name: Target collection name.
+        fragments: Text fragments corresponding to embeddings.
+        provider: Optional embeddings provider for metadata (model, provider, timestamp).
     """
     if episode.embeddings:
         raise ValueError(f"Episode {episode.pk} already stored in the vector db")
@@ -157,7 +186,7 @@ async def add_episode(
             models.PointStruct(
                 id=str(uuid.uuid4()),
                 vector=emb.tolist(),
-                payload=_gen_metadata(fragment, episode),
+                payload=_gen_metadata(fragment, episode, provider),
             )
             for emb, fragment in zip(embeddings, fragments)
         ],
@@ -182,4 +211,15 @@ def search(
         query_filter=query_filter,
         limit=num_results,
     ).points
-    return [QueryResponse(score=r.score, **r.payload) for r in results]  # type: ignore[arg-type,call-arg]
+    # Extract only the fields QueryResponse expects, ignoring metadata fields
+    return [
+        QueryResponse(
+            score=r.score,
+            episode=r.payload["episode"],  # type: ignore[index]
+            channel=r.payload["channel"],  # type: ignore[index]
+            start_secs=r.payload["start_secs"],  # type: ignore[index]
+            end_secs=r.payload["end_secs"],  # type: ignore[index]
+            text=r.payload["text"],  # type: ignore[index]
+        )
+        for r in results
+    ]

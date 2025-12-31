@@ -35,6 +35,16 @@ class EmbeddingsProvider(Protocol):
     This follows the composition over inheritance principle.
     """
 
+    @property
+    def model_name(self) -> str:
+        """Return the model identifier (e.g., 'BAAI/bge-small-en-v1.5')."""
+        ...
+
+    @property
+    def provider_name(self) -> str:
+        """Return the provider type ('local' or 'openai')."""
+        ...
+
     def get_embedding_dimension(self) -> int:
         """Return the dimensionality of embeddings produced by this provider."""
         ...
@@ -51,8 +61,19 @@ class EmbeddingsProvider(Protocol):
 class LocalEmbeddingsProvider:
     """Wrapper around sentence-transformers for local embeddings generation."""
 
-    def __init__(self, model: sentence_transformers.SentenceTransformer) -> None:
+    def __init__(
+        self, model: sentence_transformers.SentenceTransformer, model_name: str
+    ) -> None:
         self.model = model
+        self._model_name = model_name
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
+
+    @property
+    def provider_name(self) -> str:
+        return "local"
 
     def get_embedding_dimension(self) -> int:
         dim = self.model.get_sentence_embedding_dimension()
@@ -83,6 +104,14 @@ class OpenAIEmbeddingsProvider:
         self._dimension = 1536  # text-embedding-3-small dimension
 
         logger.info(f"initialized OpenAI embeddings provider with model={model}")
+
+    @property
+    def model_name(self) -> str:
+        return self.model
+
+    @property
+    def provider_name(self) -> str:
+        return "openai"
 
     def get_embedding_dimension(self) -> int:
         return self._dimension
@@ -217,7 +246,40 @@ def get_embeddings_provider() -> EmbeddingsProvider:
     else:
         logger.info(f"using local embeddings provider with model={DEFAULT_EMBEDDINGS_MODEL}")
         model = load_embeddings_model(DEFAULT_EMBEDDINGS_MODEL)
-        return LocalEmbeddingsProvider(model)
+        return LocalEmbeddingsProvider(model, model_name=DEFAULT_EMBEDDINGS_MODEL)
+
+
+def get_embeddings_provider_by_name(provider_name: str) -> EmbeddingsProvider:
+    """Create an embeddings provider by explicit name.
+
+    Unlike get_embeddings_provider(), this is NOT cached and creates a new
+    instance each call. Use for CLI overrides where you need a specific provider.
+
+    Args:
+        provider_name: 'local' or 'openai'
+
+    Returns:
+        EmbeddingsProvider instance
+
+    Raises:
+        ValueError: If provider_name is invalid or required config is missing.
+    """
+    from voogle import settings as app_settings
+
+    if provider_name == "openai":
+        if not app_settings.settings.openai_api_key:
+            raise ValueError(
+                "OpenAI provider requested but OPENAI_API_KEY not set."
+            )
+        return OpenAIEmbeddingsProvider(
+            api_key=app_settings.settings.openai_api_key,
+            model=app_settings.settings.openai_model,
+        )
+    elif provider_name == "local":
+        model = load_embeddings_model(DEFAULT_EMBEDDINGS_MODEL)
+        return LocalEmbeddingsProvider(model, model_name=DEFAULT_EMBEDDINGS_MODEL)
+    else:
+        raise ValueError(f"Unknown provider: {provider_name}. Use 'local' or 'openai'.")
 
 
 def calculate_fragments(

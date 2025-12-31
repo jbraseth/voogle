@@ -184,3 +184,24 @@ my development configuration (assuming you work in Linux, run `crontab
 
 Don't forget to change all `/{change-me}` to the actual path that
 contains the Voogle repository.
+
+### 🔧 Embedding management
+
+These commands help manage embeddings across providers and check data integrity:
+
+```bash
+# Check for fragments missing embedding metadata (provider, model, timestamp)
+docker compose exec worker voogle-episodes --check-metadata
+
+# Rebuild embeddings for a channel with full metadata
+docker compose exec worker voogle-episodes --rebuild-embeddings --reindex-channel <channel-uuid>
+
+# Rebuild using a specific provider (overrides settings)
+docker compose exec worker voogle-episodes --rebuild-embeddings --reindex-channel <channel-uuid> --provider openai
+```
+
+The `--rebuild-embeddings` command:
+1. Deletes existing vector points for the channel
+2. Re-embeds all transcribed episodes with the specified provider
+3. Stores full metadata (`embedding_model`, `embedding_provider`, `embedded_at`)
+4. Updates the SQLite `embeddings` flag for each episode
