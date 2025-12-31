@@ -6,6 +6,7 @@
 
 import logging
 import random
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -294,7 +295,7 @@ async def rebuild_channel_embeddings(
             collection_name=collection_name,
             points=[
                 qdrant_client.models.PointStruct(
-                    id=str(random.getrandbits(128)),
+                    id=str(uuid.uuid4()),
                     vector=emb.tolist(),
                     payload=vector._gen_metadata(fragment, episode, provider),
                 )
