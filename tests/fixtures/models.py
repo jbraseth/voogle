@@ -16,7 +16,7 @@ EXAMPLE_CHANNEL_FEED = "https://feeds.simplecast.com/5dXzywz5"
 
 
 @pytest.fixture(name="channel")
-async def fixture_channel(aiolib: Any) -> models.media.Channel:  # type: ignore[misc]  # noqa: ANN401
+async def fixture_channel() -> models.media.Channel:
     # Don't fetch real RSS feed in tests - create mock channel instead
     ch = await models.Channel.objects.create(
         kind=models.media.ChannelKind.podcast.value,
@@ -57,7 +57,6 @@ async def fixture_fake_channel() -> models.Channel:
 
 @pytest.fixture(name="fake_episode")
 async def fixture_fake_episode(
-    aiolib: Any,  # noqa: ANN401
     fake_channel: models.Channel,
     golf_csv_path: pathlib.Path,
 ) -> models.media.Episode:
@@ -80,7 +79,6 @@ async def fixture_fake_episode(
 
 @pytest.fixture(name="fake_episode_with_embeddings")
 async def fixture_fake_episode_with_embeddings(
-    aiolib: Any,  # noqa: ANN401
     fake_channel: models.Channel,
     golf_csv_path: pathlib.Path,
 ) -> models.media.Episode:
@@ -127,7 +125,6 @@ async def fixture_fake_episode_with_embeddings(
 
 @pytest.fixture(name="local_channel_with_embeddings")
 async def fixture_local_channel_with_embeddings(
-    aiolib: Any,  # noqa: ANN401
     jobs_csv_path: pathlib.Path,
     jobs_mp3_path: pathlib.Path,
 ) -> models.media.Episode:
@@ -191,7 +188,6 @@ async def fixture_local_channel_with_embeddings(
 
 @pytest.fixture(name="multi_channel_test_data")
 async def fixture_multi_channel_test_data(
-    aiolib: Any,  # noqa: ANN401
     golf_csv_path: pathlib.Path,
     jobs_csv_path: pathlib.Path,
 ) -> list[models.media.Episode]:
@@ -283,7 +279,6 @@ async def fixture_multi_channel_test_data(
 
 @pytest.fixture(name="mixed_channel_test_data")
 async def fixture_mixed_channel_test_data(
-    aiolib: Any,  # noqa: ANN401
     golf_csv_path: pathlib.Path,
     jobs_csv_path: pathlib.Path,
     jobs_mp3_path: pathlib.Path,

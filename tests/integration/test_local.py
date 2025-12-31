@@ -4,7 +4,7 @@
 """Integration tests for local media route."""
 
 from datetime import datetime, timezone
-from typing import Any
+from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
@@ -15,7 +15,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(name="local_channel")
-async def fixture_local_channel(aiolib: Any) -> models.media.Channel:  # type: ignore[misc]  # noqa: ANN401
+async def fixture_local_channel() -> models.media.Channel:
     """Create a local channel for testing."""
     ch = await models.Channel.objects.create(
         kind=ChannelKind.local.value,
@@ -32,7 +32,6 @@ async def fixture_local_channel(aiolib: Any) -> models.media.Channel:  # type: i
 
 @pytest.fixture(name="local_episode")
 async def fixture_local_episode(
-    aiolib: Any,  # noqa: ANN401
     local_channel: models.media.Channel,
 ) -> models.media.Episode:
     """Create a local episode with an actual media file."""
@@ -143,10 +142,9 @@ def test_storage_helper_functions(
 
 @pytest.mark.description("Query endpoint returns /local/ URLs for local channel episodes")
 async def test_query_returns_local_url_for_local_channel(
-    aiolib: Any,  # noqa: ANN401
     local_channel: models.media.Channel,
     local_episode: models.media.Episode,
-    jobs_csv_path: Any,  # noqa: ANN401
+    jobs_csv_path: Path,
     client: TestClient,
 ) -> None:
     """Test that querying a local channel episode returns a /local/ prefixed media_url.
