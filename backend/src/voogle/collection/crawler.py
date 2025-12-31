@@ -15,6 +15,7 @@ import logging
 
 from voogle import models, storage
 from voogle.collection import feed, local
+from voogle.sources import generator as source_generator
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,91 @@ async def add_local_channels() -> int:
         for channel_info in json.loads(storage.LOCAL_SOURCES_PATH.read_bytes()):
             created, _ = await get_or_create_local_channel(channel_info)
             total += 1 if created else 0
+    return total
+
+
+def read_local_feed_channel(feed_path: str, language: str | None = None) -> models.Channel | None:
+    """Read a channel from a locally generated RSS feed file.
+
+    Args:
+        feed_path: Path to the RSS XML file
+        language: Optional language override
+
+    Returns:
+        Channel model (not yet saved to database)
+    """
+    from pathlib import Path
+
+    import xmltodict
+
+    path = Path(feed_path)
+    if not path.exists():
+        logger.error(f"Local feed file not found: {feed_path}")
+        return None
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            parsed = xmltodict.parse(f.read())
+    except Exception as e:
+        logger.error(f"Failed to parse local feed {feed_path}: {e}")
+        return None
+
+    channel_info = parsed["rss"]["channel"]
+    language = language or channel_info.get("language", "").lower()
+
+    return models.Channel(
+        kind=models.ChannelKind.local.value,
+        title=channel_info["title"],
+        description=channel_info.get("description", ""),
+        language=feed.LANGUAGES_MAP.get(language, language[:2] if language else ""),
+        url=channel_info.get("link", ""),
+        feed=feed_path,  # Use file path as feed identifier
+        local_folder="",  # Not a folder-based local channel
+        image=channel_info.get("image", {}).get("url", "") if isinstance(channel_info.get("image"), dict) else "",
+    )
+
+
+async def get_or_create_generated_channel(
+    local_feed: source_generator.LocalFeed, language: str | None = None
+) -> tuple[bool, models.Channel | None]:
+    """Read a generated local feed and return its corresponding channel.
+
+    Uses channel_url as the unique identifier to avoid duplicates.
+    """
+    logger.info(f"get or create channel from local feed: {local_feed.channel_url}")
+    created = False
+
+    # Use channel_url as the feed identifier for uniqueness
+    ch = await models.Channel.objects.get_or_none(feed=local_feed.channel_url)
+    if ch is None:
+        created = True
+        logger.info(f"creating channel from local feed: {local_feed.path}")
+        ch = read_local_feed_channel(str(local_feed.path), language)
+        if ch:
+            # Override feed with channel_url for proper identification
+            ch.feed = local_feed.channel_url
+            ch = await ch.save()
+    return created, ch
+
+
+async def add_generated_channels() -> int:
+    """Run source adapters and add channels from generated RSS feeds.
+
+    Returns the number of channels added.
+    """
+    logger.info("generating RSS feeds from source adapters")
+    try:
+        local_feeds = source_generator.generate_all_feeds()
+    except Exception as e:
+        logger.error(f"Source adapter generation failed: {e}")
+        raise
+
+    total = 0
+    for local_feed in local_feeds:
+        created, _ = await get_or_create_generated_channel(local_feed)
+        total += 1 if created else 0
+
+    logger.info(f"added {total} channel(s) from generated feeds")
     return total
 
 
