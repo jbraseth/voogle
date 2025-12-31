@@ -9,6 +9,19 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Added
+- **Multi-provider embeddings with consistent metadata** (#25)
+  - `EmbeddingsProvider.model_name` and `provider_name` properties for tracking
+  - Qdrant payload now includes `embedding_model`, `embedding_provider`, `embedded_at`
+  - CLI: `voogle-episodes --rebuild-embeddings --reindex-channel <id>` to regenerate embeddings with metadata
+  - CLI: `voogle-episodes --provider local|openai` to override embedding provider
+  - CLI: `voogle-episodes --check-metadata` to audit fragments missing metadata
+  - `get_embeddings_provider_by_name()` factory for explicit provider creation (non-cached)
+  - Tests for protocol properties and metadata storage
+
+**WHY**: When debugging search quality, knowing which embedding model produced each fragment is critical. Previously it was impossible to tell if results came from local or OpenAI embeddings, or which model version was used.
+
+**REASONING**: Metadata in payload (not collection) allows mixed models during migration. Protocol properties enable provider-agnostic metadata generation. CLI rebuild command allows per-channel migration without affecting other data. Non-cached factory for CLI overrides avoids state pollution.
+
 - **Configurable chunking strategy per channel** (#19)
   - New `ChunkingConfig` dataclass with `chunk_size_words`, `chunk_overlap_words`, `min_chunk_length_words`
   - YAML config file at `config/chunking.yaml` for per-channel settings
