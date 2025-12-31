@@ -35,6 +35,20 @@ def get_collection_name(provider_name: str) -> str:
     return DEFAULT_COLLECTION  # "vectordb" for local
 
 
+def get_experiment_collection_name(experiment_name: str, provider_name: str) -> str:
+    """Return collection name for A/B testing experiments.
+
+    Args:
+        experiment_name: Name of the experiment (e.g., "60word", "overlap10").
+        provider_name: Embeddings provider name ("local" or "openai").
+
+    Returns:
+        Collection name like "vectordb-60word" or "vectordb-openai-60word".
+    """
+    base = get_collection_name(provider_name)
+    return f"{base}-{experiment_name}"
+
+
 class QueryResponse(NamedTuple):
     score: float
     episode: int

@@ -13,6 +13,7 @@ import qdrant_client
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from voogle import collection, embedding, models, settings, transcription, utils, vector
+from voogle.chunking import DEFAULT_CONFIG, ChunkingConfig, load_chunking_config
 
 logger = logging.getLogger(__name__)
 
@@ -71,16 +72,23 @@ async def store_episode_embeddings(
     provider: embedding.EmbeddingsProvider,
     client: qdrant_client.QdrantClient,
     collection_name: str,
+    chunking_config: ChunkingConfig = DEFAULT_CONFIG,
 ) -> None:
-    """Obtain embeddings for a given episode and store them in the
-    vector database.
+    """Obtain embeddings for a given episode and store them in the vector database.
+
+    Args:
+        episode: Episode to process.
+        provider: Embeddings provider.
+        client: Qdrant client.
+        collection_name: Target collection name.
+        chunking_config: Chunking configuration for fragmentation.
     """
     title = str(episode.title)
     logger.info(f"storing embeddings for episode {title}: {episode.pk}")
     utils.log_event("event_store_start", title)
     try:
         embeddings, fragments = await embedding.episode_embeddings(
-            episode, provider, embedding.DEFAULT_FRAGMENT_WORDS
+            episode, provider, chunking_config
         )
         await vector.add_episode(episode, client, embeddings, collection_name, fragments)
         utils.log_event("event_store_end", title)
@@ -96,7 +104,7 @@ async def store_episode_embeddings(
 
 
 async def store_episodes_embeddings() -> None:
-    """Store pending episodes embeddings in the vector database"""
+    """Store pending episodes embeddings in the vector database."""
     logger.info("storing all pending episodes in vector database")
 
     # Get provider and collection config
@@ -113,13 +121,77 @@ async def store_episodes_embeddings() -> None:
     # Process episodes
     episodes = await models.Episode.objects.filter(
         transcribed=True, embeddings=False
-    ).all()
+    ).select_related("channel").all()
     logger.info(f"there are {len(episodes)} pending episodes...")
     random.shuffle(episodes)
 
     for episode in episodes:
-        await store_episode_embeddings(episode, provider, client, collection_name)
+        # Load per-channel chunking config
+        channel_id = str(episode.channel.pk) if episode.channel else None
+        chunking_config = load_chunking_config(channel_id)
+        await store_episode_embeddings(
+            episode, provider, client, collection_name, chunking_config
+        )
     return
+
+
+async def reindex_channel(
+    channel: models.Channel,
+    experiment_name: str,
+    chunking_config: ChunkingConfig,
+) -> int:
+    """Re-index all episodes from a channel into an experiment collection.
+
+    Args:
+        channel: Channel to re-index.
+        experiment_name: Name for the experiment collection.
+        chunking_config: Chunking configuration to use.
+
+    Returns:
+        Number of episodes indexed.
+    """
+    provider = embedding.get_embeddings_provider()
+    provider_name = settings.settings.embeddings_provider
+    collection_name = vector.get_experiment_collection_name(experiment_name, provider_name)
+
+    logger.info(
+        f"re-indexing channel {channel.pk} into collection={collection_name} "
+        f"with config={chunking_config}"
+    )
+
+    client = vector.get_configured_client()
+    vector.create_collection(client, collection_name, provider.get_embedding_dimension())
+
+    episodes = await models.Episode.objects.filter(
+        channel=channel, transcribed=True
+    ).all()
+    logger.info(f"re-indexing {len(episodes)} episodes...")
+
+    for episode in episodes:
+        embeddings, fragments = await embedding.episode_embeddings(
+            episode, provider, chunking_config
+        )
+        # Use upsert directly since we're creating a fresh collection
+        client.upsert(
+            collection_name=collection_name,
+            points=[
+                qdrant_client.models.PointStruct(
+                    id=str(random.getrandbits(128)),
+                    vector=emb.tolist(),
+                    payload={
+                        "episode": episode.pk,
+                        "channel": channel.pk,
+                        "start_secs": fragment.start_secs,
+                        "end_secs": fragment.end_secs,
+                        "text": fragment.text,
+                    },
+                )
+                for emb, fragment in zip(embeddings, fragments)
+            ],
+        )
+
+    logger.info(f"re-indexed {len(episodes)} episodes into {collection_name}")
+    return len(episodes)
 
 
 def search(
@@ -152,4 +224,19 @@ def search(
         collection_name,
         num_results,
         query_filter=query_filter,
+    )
+
+
+def search_collection(
+    text: str,
+    collection_name: str,
+    num_results: int,
+) -> list[vector.QueryResponse]:
+    """Search a specific collection (used for A/B comparison)."""
+    provider = embedding.get_embeddings_provider()
+    return vector.search(
+        vector.get_configured_client(),
+        embedding.text2embedding(text, provider),
+        collection_name,
+        num_results,
     )
