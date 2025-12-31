@@ -3,10 +3,12 @@
 
 """BibleProject Classroom source adapter for Voogle.
 
-Detects compound sessions containing multiple Mux playback IDs
-(main video + slides video) plus PDF teacher notes. Generates RSS feeds
-that emit separate items for each artifact so Voogle can index them
-independently.
+Parses BibleProject Classroom sessions containing a main Mux video
+plus optional PDF teacher notes. Generates RSS feeds that emit separate
+items for each artifact so Voogle can index them independently.
+
+Note: Slides are synchronized images displayed alongside the video,
+handled by a separate player feature (P1-synced-slides-playback).
 """
 
 from __future__ import annotations
@@ -27,10 +29,14 @@ logger = logging.getLogger(__name__)
 
 
 class ArtifactType(Enum):
-    """Type of learning artifact in a session."""
+    """Type of learning artifact in a session.
+
+    Note: Slides are synchronized images displayed alongside the main video,
+    not a separate video track. Slide playback is handled by a separate
+    player feature (see output/next/P1-synced-slides-playback.md).
+    """
 
     MAIN_VIDEO = "main"
-    SLIDES_VIDEO = "slides"
     TEACHER_NOTES = "pdf"
 
 
@@ -46,7 +52,7 @@ class SessionArtifact:
 
     @property
     def is_video(self) -> bool:
-        return self.artifact_type in (ArtifactType.MAIN_VIDEO, ArtifactType.SLIDES_VIDEO)
+        return self.artifact_type == ArtifactType.MAIN_VIDEO
 
 
 @dataclass
@@ -66,13 +72,6 @@ class CompoundSession:
     def main_video(self) -> SessionArtifact | None:
         return next(
             (a for a in self.artifacts if a.artifact_type == ArtifactType.MAIN_VIDEO),
-            None,
-        )
-
-    @property
-    def slides_video(self) -> SessionArtifact | None:
-        return next(
-            (a for a in self.artifacts if a.artifact_type == ArtifactType.SLIDES_VIDEO),
             None,
         )
 
@@ -186,7 +185,8 @@ def parse_session(
     if not playback_ids:
         raise ValueError(f"No Mux playback IDs found in session: {session_url}")
 
-    # First playback ID is the main video
+    # Use first playback ID as the main video
+    # (BibleProject sessions have a single Mux video; slides are synchronized images)
     main_id = playback_ids[0]
     artifacts.append(
         SessionArtifact(
@@ -197,19 +197,6 @@ def parse_session(
             mime_type="video/mp4",
         )
     )
-
-    # Second playback ID (if present) is the slides video
-    if len(playback_ids) >= 2:
-        slides_id = playback_ids[1]
-        artifacts.append(
-            SessionArtifact(
-                artifact_type=ArtifactType.SLIDES_VIDEO,
-                url=mux_stream_url(slides_id),
-                mux_playback_id=slides_id,
-                title_suffix="Slides",
-                mime_type="video/mp4",
-            )
-        )
 
     # Extract PDF URL if present
     pdf_url = extract_pdf_url(html)
@@ -300,9 +287,7 @@ def emit_rss(
                     desc = f"Primary lesson content: {session.description}"
                 else:
                     desc = f"Primary lesson content for {session.session_title}"
-            elif artifact.artifact_type == ArtifactType.SLIDES_VIDEO:
-                desc = f"Presentation slides for {session.session_title}"
-            else:
+            else:  # TEACHER_NOTES
                 desc = f"Downloadable PDF notes for {session.session_title}"
             ET.SubElement(item, "description").text = desc
 
@@ -341,18 +326,21 @@ class BibleProjectAdapter:
     {
         "course_slug": "how-to-read",
         "course_title": "How to Read the Bible",
-        "course_url": "https://classroom.bibleproject.com/courses/how-to-read",
+        "course_url": "https://bibleproject.com/classroom/how-to-read",
         "sessions": [
             {
                 "session_id": "s1",
                 "session_title": "Session 1: Introduction",
-                "session_url": "https://classroom.bibleproject.com/courses/.../s1",
+                "session_url": "https://bibleproject.com/classroom/how-to-read/sessions/1",
                 "description": "Learn the basics...",
-                "mux_ids": ["abc123main", "def456slides"],
-                "pdf_url": "https://classroom.bibleproject.com/downloads/s1-notes.pdf"
+                "mux_id": "abc123playbackid",
+                "pdf_url": "https://bibleproject.com/.../s1-notes.pdf"
             }
         ]
     }
+
+    Note: Each session has a single main video (mux_id). Slides are synchronized
+    images displayed alongside the video, handled by a separate player feature.
     """
 
     def __init__(self, config_dir: Path, output_dir: Path) -> None:
@@ -464,30 +452,18 @@ class BibleProjectAdapter:
         """Build a CompoundSession from config dict."""
         artifacts: list[SessionArtifact] = []
 
-        mux_ids = session_config.get("mux_ids", [])
-        if mux_ids:
-            # First ID is main video
+        # Main video (single Mux ID per session)
+        mux_id = session_config.get("mux_id")
+        if mux_id:
             artifacts.append(
                 SessionArtifact(
                     artifact_type=ArtifactType.MAIN_VIDEO,
-                    url=mux_stream_url(mux_ids[0]),
-                    mux_playback_id=mux_ids[0],
+                    url=mux_stream_url(mux_id),
+                    mux_playback_id=mux_id,
                     title_suffix="Main Video",
                     mime_type="video/mp4",
                 )
             )
-
-            # Second ID (if present) is slides
-            if len(mux_ids) >= 2:
-                artifacts.append(
-                    SessionArtifact(
-                        artifact_type=ArtifactType.SLIDES_VIDEO,
-                        url=mux_stream_url(mux_ids[1]),
-                        mux_playback_id=mux_ids[1],
-                        title_suffix="Slides",
-                        mime_type="video/mp4",
-                    )
-                )
 
         # PDF if present
         pdf_url = session_config.get("pdf_url")

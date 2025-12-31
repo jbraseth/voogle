@@ -49,11 +49,6 @@ def main_only_html(fixtures_dir: Path) -> str:
 
 
 @pytest.fixture
-def main_slides_html(fixtures_dir: Path) -> str:
-    return (fixtures_dir / "session_main_slides.html").read_text()
-
-
-@pytest.fixture
 def main_pdf_html(fixtures_dir: Path) -> str:
     return (fixtures_dir / "session_main_pdf.html").read_text()
 
@@ -77,7 +72,6 @@ class TestArtifactType:
     @pytest.mark.description("ArtifactType enum has expected values")
     def test_artifact_type_values(self) -> None:
         assert ArtifactType.MAIN_VIDEO.value == "main"
-        assert ArtifactType.SLIDES_VIDEO.value == "slides"
         assert ArtifactType.TEACHER_NOTES.value == "pdf"
 
 
@@ -89,17 +83,6 @@ class TestSessionArtifact:
             url="https://stream.mux.com/abc123.m3u8",
             mux_playback_id="abc123",
             title_suffix="Main Video",
-            mime_type="video/mp4",
-        )
-        assert artifact.is_video is True
-
-    @pytest.mark.description("SessionArtifact correctly identifies video artifacts for slides")
-    def test_is_video_for_slides(self) -> None:
-        artifact = SessionArtifact(
-            artifact_type=ArtifactType.SLIDES_VIDEO,
-            url="https://stream.mux.com/def456.m3u8",
-            mux_playback_id="def456",
-            title_suffix="Slides",
             mime_type="video/mp4",
         )
         assert artifact.is_video is True
@@ -126,13 +109,6 @@ class TestCompoundSession:
             title_suffix="Main Video",
             mime_type="video/mp4",
         )
-        slides = SessionArtifact(
-            artifact_type=ArtifactType.SLIDES_VIDEO,
-            url="https://stream.mux.com/slides.m3u8",
-            mux_playback_id="slides",
-            title_suffix="Slides",
-            mime_type="video/mp4",
-        )
         pdf = SessionArtifact(
             artifact_type=ArtifactType.TEACHER_NOTES,
             url="https://example.com/notes.pdf",
@@ -148,11 +124,10 @@ class TestCompoundSession:
             course_title="Test Course",
             course_slug="test-course",
             description="Test description",
-            artifacts=[main, slides, pdf],
+            artifacts=[main, pdf],
         )
 
         assert session.main_video == main
-        assert session.slides_video == slides
         assert session.teacher_notes == pdf
 
     @pytest.mark.description("CompoundSession returns None for missing artifact types")
@@ -176,7 +151,6 @@ class TestCompoundSession:
         )
 
         assert session.main_video == main
-        assert session.slides_video is None
         assert session.teacher_notes is None
 
 
@@ -192,26 +166,23 @@ class TestExtractMuxPlaybackIds:
         assert len(ids) == 1
         assert ids[0] == "abc123mainvideo"
 
-    @pytest.mark.description("Extract both Mux playback IDs from main+slides session")
-    def test_main_and_slides(self, main_slides_html: str) -> None:
-        ids = extract_mux_playback_ids(main_slides_html)
-        assert len(ids) == 2
-        assert ids[0] == "def456mainvideo"
-        assert ids[1] == "ghi789slidesvid"
+    @pytest.mark.description("Extract Mux ID from session with video + PDF")
+    def test_main_pdf(self, main_pdf_html: str) -> None:
+        ids = extract_mux_playback_ids(main_pdf_html)
+        assert len(ids) == 1
+        assert ids[0] == "jkl012mainvideo"
 
-    @pytest.mark.description("Extract multiple IDs from session with all artifacts")
+    @pytest.mark.description("Extract Mux ID from session with all artifacts")
     def test_all_artifacts(self, all_artifacts_html: str) -> None:
         ids = extract_mux_playback_ids(all_artifacts_html)
-        assert len(ids) == 2
+        assert len(ids) == 1
         assert ids[0] == "mno345mainvideo"
-        assert ids[1] == "pqr678slidesvid"
 
     @pytest.mark.description("Extract IDs from JavaScript config patterns")
     def test_js_config_patterns(self, js_config_html: str) -> None:
         ids = extract_mux_playback_ids(js_config_html)
-        assert len(ids) >= 2
+        assert len(ids) >= 1
         assert "stu901jsconfig" in ids
-        assert "vwx234altconfig" in ids
 
     @pytest.mark.description("Deduplicate repeated playback IDs")
     def test_deduplication(self) -> None:
@@ -292,25 +263,6 @@ class TestParseSession:
         assert len(session.artifacts) == 1
         assert session.main_video is not None
         assert session.main_video.mux_playback_id == "abc123mainvideo"
-        assert session.slides_video is None
-        assert session.teacher_notes is None
-
-    @pytest.mark.description("Parse session with main + slides videos")
-    def test_main_slides(self, main_slides_html: str) -> None:
-        session = parse_session(
-            html=main_slides_html,
-            session_url="https://example.com/s2",
-            session_id="s2",
-            session_title="Session 2",
-            course_title="Test Course",
-            course_slug="test-course",
-        )
-
-        assert len(session.artifacts) == 2
-        assert session.main_video is not None
-        assert session.main_video.mux_playback_id == "def456mainvideo"
-        assert session.slides_video is not None
-        assert session.slides_video.mux_playback_id == "ghi789slidesvid"
         assert session.teacher_notes is None
 
     @pytest.mark.description("Parse session with main video + PDF")
@@ -326,11 +278,10 @@ class TestParseSession:
 
         assert len(session.artifacts) == 2
         assert session.main_video is not None
-        assert session.slides_video is None
         assert session.teacher_notes is not None
         assert session.teacher_notes.mime_type == "application/pdf"
 
-    @pytest.mark.description("Parse session with all artifacts")
+    @pytest.mark.description("Parse session with all artifacts (main + PDF)")
     def test_all_artifacts(self, all_artifacts_html: str) -> None:
         session = parse_session(
             html=all_artifacts_html,
@@ -341,9 +292,8 @@ class TestParseSession:
             course_slug="test-course",
         )
 
-        assert len(session.artifacts) == 3
+        assert len(session.artifacts) == 2
         assert session.main_video is not None
-        assert session.slides_video is not None
         assert session.teacher_notes is not None
 
     @pytest.mark.description("Raise ValueError when no Mux IDs found")
@@ -366,20 +316,13 @@ class TestParseSession:
 
 
 class TestEmitRss:
-    @pytest.mark.description("Session with 3 artifacts produces 3 RSS items")
+    @pytest.mark.description("Session with 2 artifacts produces 2 RSS items")
     def test_compound_session_rss(self, tmp_path: Path) -> None:
         main = SessionArtifact(
             artifact_type=ArtifactType.MAIN_VIDEO,
             url="https://stream.mux.com/main.m3u8",
             mux_playback_id="main",
             title_suffix="Main Video",
-            mime_type="video/mp4",
-        )
-        slides = SessionArtifact(
-            artifact_type=ArtifactType.SLIDES_VIDEO,
-            url="https://stream.mux.com/slides.m3u8",
-            mux_playback_id="slides",
-            title_suffix="Slides",
             mime_type="video/mp4",
         )
         pdf = SessionArtifact(
@@ -397,7 +340,7 @@ class TestEmitRss:
             course_title="Test Course",
             course_slug="test-course",
             description="Test description",
-            artifacts=[main, slides, pdf],
+            artifacts=[main, pdf],
         )
 
         output_path = tmp_path / "feed.xml"
@@ -405,18 +348,17 @@ class TestEmitRss:
 
         tree = ET.parse(output_path)
         items = tree.findall(".//item")
-        assert len(items) == 3
+        assert len(items) == 2
 
         # Verify titles
         titles = [item.find("title").text for item in items]
         assert "Introduction - Main Video" in titles
-        assert "Introduction - Slides" in titles
         assert "Introduction - Teacher Notes" in titles
 
         # Verify MIME types
         enclosures = [item.find("enclosure") for item in items]
         types = [e.get("type") for e in enclosures]
-        assert types.count("video/mp4") == 2
+        assert types.count("video/mp4") == 1
         assert types.count("application/pdf") == 1
 
     @pytest.mark.description("GUIDs follow correct format")
@@ -476,7 +418,7 @@ class TestEmitRss:
 
     @pytest.mark.description("Multiple sessions produce correct item count")
     def test_multiple_sessions(self, tmp_path: Path) -> None:
-        # Session 1: 2 artifacts
+        # Session 1: 2 artifacts (main + pdf)
         s1_main = SessionArtifact(
             artifact_type=ArtifactType.MAIN_VIDEO,
             url="https://stream.mux.com/s1main.m3u8",
@@ -484,12 +426,12 @@ class TestEmitRss:
             title_suffix="Main Video",
             mime_type="video/mp4",
         )
-        s1_slides = SessionArtifact(
-            artifact_type=ArtifactType.SLIDES_VIDEO,
-            url="https://stream.mux.com/s1slides.m3u8",
-            mux_playback_id="s1slides",
-            title_suffix="Slides",
-            mime_type="video/mp4",
+        s1_pdf = SessionArtifact(
+            artifact_type=ArtifactType.TEACHER_NOTES,
+            url="https://example.com/s1notes.pdf",
+            mux_playback_id=None,
+            title_suffix="Teacher Notes",
+            mime_type="application/pdf",
         )
         session1 = CompoundSession(
             session_id="s1",
@@ -498,10 +440,10 @@ class TestEmitRss:
             course_title="Test Course",
             course_slug="test-course",
             description="",
-            artifacts=[s1_main, s1_slides],
+            artifacts=[s1_main, s1_pdf],
         )
 
-        # Session 2: 1 artifact
+        # Session 2: 1 artifact (main only)
         s2_main = SessionArtifact(
             artifact_type=ArtifactType.MAIN_VIDEO,
             url="https://stream.mux.com/s2main.m3u8",
@@ -549,7 +491,7 @@ class TestBibleProjectAdapter:
         output_dir = tmp_path / "output"
         config_dir.mkdir()
 
-        # Create test config
+        # Create test config (using new mux_id format)
         config = {
             "course_slug": "test-course",
             "course_title": "Test Course",
@@ -558,7 +500,7 @@ class TestBibleProjectAdapter:
                     "session_id": "s1",
                     "session_title": "Session 1",
                     "session_url": "https://example.com/s1",
-                    "mux_ids": ["main123", "slides456"],
+                    "mux_id": "main123",
                     "pdf_url": "https://example.com/notes.pdf",
                 }
             ],
@@ -578,7 +520,7 @@ class TestBibleProjectAdapter:
         # Verify RSS content
         tree = ET.parse(feeds[0].path)
         items = tree.findall(".//item")
-        assert len(items) == 3  # main + slides + pdf
+        assert len(items) == 2  # main + pdf
 
     @pytest.mark.description("Adapter returns empty list for missing config dir")
     def test_missing_config_dir(self, tmp_path: Path) -> None:
