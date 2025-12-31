@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     # Explicit embeddings provider override: "local", "openai", or None (auto-detect)
     embeddings_provider_override: Optional[str] = None
 
+    # YouTube Playlist Adapter
+    youtube_output_dir: str = "youtube"  # relative to data_dir
+    youtube_audio_format: str = "mp3"
+    youtube_cookies_file: Optional[str] = None  # path to cookies.txt for auth
+
     @property
     def data_dir(self) -> pathlib.Path:
         # In Docker (both dev and prod), data is always mounted at /data
@@ -76,6 +81,10 @@ class Settings(BaseSettings):
     @property
     def media_folder(self) -> pathlib.Path:
         return self.data_dir / self.media_folder_name
+
+    @property
+    def youtube_output_path(self) -> pathlib.Path:
+        return self.data_dir / self.youtube_output_dir
 
     @property
     def qdrant_use_file(self) -> bool:
