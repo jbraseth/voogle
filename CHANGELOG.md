@@ -21,6 +21,19 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 **WHY**: Different podcast content types benefit from different chunking strategies. Technical content needs larger chunks for context, while conversational content needs smaller chunks for precision. This enables experimentation without code changes.
 
 **REASONING**: Config file over database for version control. Sentence-level overlap maintains natural speech boundaries. A/B testing uses separate collections to avoid mixing embeddings from different strategies.
+- **YouTube playlist ingestion adapter** (#17)
+  - New `backend/src/voogle/sources/youtube_playlist.py` module
+  - `scan(playlist_url)`: Scan playlist and get metadata without downloading
+  - `sync_media(episodes, output_dir)`: Download audio files with skip/retry logic
+  - `emit_rss(episodes, output_dir, feed_path)`: Generate RSS feed for Voogle ingestion
+  - Two-pass download strategy: web client first, android fallback for rate limits
+  - Progress reporting and failure resilience (continues on individual failures)
+  - Settings: `youtube_output_dir`, `youtube_audio_format`, `youtube_cookies_file`
+  - Comprehensive unit test coverage (20 tests)
+
+**WHY**: Enables indexing YouTube playlists in Voogle. The adapter produces files and RSS that the existing collection pipeline can consume, enabling semantic search over YouTube content.
+
+**REASONING**: Placed in `sources/` directory (separate from `collection/`) because it represents a different abstraction level. The adapter doesn't touch the database directly - it produces files + RSS that existing `collection/feed.py` can ingest. Uses yt-dlp with no cookies by default (privacy-respecting).
 
 ### Fixed
 - **Dev mode works natively and in Docker** (#15)
