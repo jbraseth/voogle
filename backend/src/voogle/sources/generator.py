@@ -53,6 +53,18 @@ def discover_adapters() -> list[SourceAdapter]:
         except ImportError:
             logger.debug("YouTube adapter not available (yt-dlp not installed)")
 
+    # BibleProject adapter (if config exists)
+    bibleproject_config_dir = local_dir / "bibleproject"
+    if bibleproject_config_dir.exists() and any(bibleproject_config_dir.glob("*.json")):
+        from voogle.sources.bibleproject import BibleProjectAdapter
+
+        adapters.append(
+            BibleProjectAdapter(
+                config_dir=bibleproject_config_dir,
+                output_dir=get_generated_feeds_dir() / "bibleproject",
+            )
+        )
+
     return adapters
 
 
