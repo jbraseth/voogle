@@ -1,0 +1,37 @@
+{
+  "_comment": "Sample yt-dlp single video metadata (simplified from actual output)",
+  "id": "dQw4w9WgXcQ",
+  "title": "Episode 1: Getting Started",
+  "description": "In this episode we cover the basics.\n\nTimestamps:\n0:00 Intro\n1:30 Setup\n5:00 First steps\n10:00 Common mistakes\n15:00 Wrap up",
+  "duration": 1234,
+  "upload_date": "20240115",
+  "channel": "Test Channel",
+  "channel_id": "UCtest123",
+  "uploader": "Test Uploader",
+  "uploader_id": "@testuploader",
+  "view_count": 123456,
+  "like_count": 5000,
+  "comment_count": 200,
+  "formats": [
+    {
+      "format_id": "18",
+      "ext": "mp4",
+      "height": 360,
+      "vcodec": "avc1.42001E",
+      "acodec": "mp4a.40.2"
+    },
+    {
+      "format_id": "140",
+      "ext": "m4a",
+      "acodec": "mp4a.40.2",
+      "abr": 128
+    }
+  ],
+  "thumbnails": [
+    {
+      "url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
+      "width": 120,
+      "height": 90
+    }
+  ]
+}
