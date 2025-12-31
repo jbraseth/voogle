@@ -29,7 +29,10 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
   - Two-pass download strategy: web client first, android fallback for rate limits
   - Progress reporting and failure resilience (continues on individual failures)
   - Settings: `youtube_output_dir`, `youtube_audio_format`, `youtube_cookies_file`
-  - Comprehensive unit test coverage (20 tests)
+  - Comprehensive unit test coverage (31 tests) (#27)
+  - JSON fixture files for realistic yt-dlp data mocking
+  - Tests for helper functions (`_make_filename`, `_parse_upload_date`)
+  - Dry-run integration tests verifying full scan→emit_rss workflow
 
 **WHY**: Enables indexing YouTube playlists in Voogle. The adapter produces files and RSS that the existing collection pipeline can consume, enabling semantic search over YouTube content.
 
