@@ -95,7 +95,8 @@ async def podcasts_and_episodes() -> None:
             with st.expander(
                 f"{title}. Indexed {ch.available_episodes}/{ch.total_episodes}"
             ):
-                st.image(ch.image)
+                if ch.image:
+                    st.image(ch.image)
                 st.markdown(ch.description)
 
 

@@ -132,7 +132,8 @@ async def _main() -> None:
     if args.store:
         await tasks.store_episodes_embeddings()
 
-    if args.reindex_channel:
+    if args.reindex_channel and not args.rebuild_embeddings:
+        # Experiment reindexing (requires --experiment)
         if not args.experiment:
             parser.error("--experiment is required with --reindex-channel")
         channel = await models.Channel.objects.get(id=args.reindex_channel)
