@@ -139,6 +139,19 @@ playwright install chromium
 pytest tests/e2e -v
 ```
 
+**E2E Testing Best Practices:**
+- Run with `--headed` during development to watch browser behavior
+- The `console_monitor` fixture captures browser console errors - these are real bugs
+- Always verify no console errors/warnings before considering a test "passing"
+- When fixing E2E fixtures, read the schema definitions first (e.g., `QueryResponse` NamedTuple)
+- Check `@pytest.mark.parametrize` configs to understand ALL test cases
+
+**Dev Environment Debugging:**
+- CORS/Private Network Access errors → use Vite proxy, not header hacks
+- Check hot reload: `podman logs <container> --tail 10` should show "Reloading..."
+- Env var changes need `docker compose up -d --build`, not just restart
+- Volume-mounted source reloads; baked config (vite.config.js) needs rebuild
+
 **CI Pipeline (GitHub Actions):**
 - **Lint** (~7 seconds): Runs `ruff` natively on GitHub runner
 - **Test** (~2 minutes): Runs pytest in Docker with full dependencies
