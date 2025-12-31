@@ -239,6 +239,47 @@ def search_collection(
     )
 
 
+def search_for_visualization(
+    text: str, num_results: int, channel: Optional[str] = None
+) -> tuple[embedding.Embeddings, list[vector.SearchResultWithVector]]:
+    """Search and return results with embeddings for 2D visualization.
+
+    Args:
+        text: Query text.
+        num_results: Number of results to return.
+        channel: Optional channel filter.
+
+    Returns:
+        Tuple of (query_embedding, search_results_with_vectors).
+    """
+    provider = embedding.get_embeddings_provider()
+    provider_name = settings.settings.embeddings_provider
+    collection_name = vector.get_collection_name(provider_name)
+
+    query_embedding = embedding.text2embedding(text, provider)
+
+    query_filter = None
+    if channel:
+        query_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="channel",
+                    match=MatchValue(value=channel),
+                )
+            ]
+        )
+
+    results = vector.search_with_vectors(
+        vector.get_configured_client(),
+        query_embedding,
+        collection_name,
+        num_results,
+        query_filter=query_filter,
+    )
+
+    return query_embedding, results
+
+
 async def rebuild_channel_embeddings(
     channel: models.Channel,
     provider: embedding.EmbeddingsProvider,

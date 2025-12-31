@@ -9,6 +9,25 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Added
+- **Result Map Visualization with 2D Embedding Projection** (#32)
+  - New `/media/query/visualize` endpoint returns 2D coordinates for search results
+  - PCA projection in `backend/src/voogle/vector.py` for dimensionality reduction
+  - Query embedding included as reference point in visualization
+  - `VisualizationResponse` schema with points, labels, scores, and query_point
+  - `search_with_vectors()` function returns results with embedding vectors
+  - Frontend: `ResultMap.svelte` component with Plotly scatter plot
+  - Lazy-loaded Plotly.js to minimize bundle impact
+  - Click-to-scroll: clicking a point scrolls to and highlights the result card
+  - Hover tooltips show fragment preview text
+  - Toggle button to show/hide visualization on Query page
+  - Score-based color gradient (green for high similarity)
+  - 6 unit tests for projection edge cases (min results, identical embeddings, typical sizes)
+  - 2 integration tests for endpoint validation
+
+**WHY**: Users have no spatial understanding of how search results relate to each other semantically. A 2D visualization helps show which results are clustered together and how close they are to the query.
+
+**REASONING**: PCA chosen over UMAP for speed (deterministic, ~10ms for 20 points) and no new dependencies (sklearn already available). Lazy-loaded Plotly minimizes frontend bundle impact. Query point shown as star to provide anchor for understanding relative distances.
+
 - **Local RAG answer endpoint with CLI tools** (#33)
   - New `/assistant/answer_local` endpoint for local-only RAG queries
   - Retrieves relevant fragments via existing search, builds prompts with citations

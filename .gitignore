@@ -28,8 +28,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Python egg/build directories (not Svelte lib/ folders)
+/lib/
+/lib64/
 parts/
 sdist/
 var/

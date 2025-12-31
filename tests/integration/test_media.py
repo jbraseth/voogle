@@ -124,3 +124,107 @@ async def test_query_endpoint(
     # Verify pk is not exposed
     assert "pk" not in result["episode"]
     assert "pk" not in result["channel"]
+
+
+@pytest.mark.description("Visualization endpoint returns 2D projected coordinates")
+async def test_visualization_endpoint(
+    fake_channel: models.media.Channel,
+    fake_episode: models.media.Episode,
+    client: TestClient,
+) -> None:
+    """Test that the visualization endpoint returns properly projected 2D coordinates.
+
+    This test verifies:
+    1. Visualization endpoint returns valid JSON
+    2. Response includes points array with x, y coordinates
+    3. Response includes query_point
+    4. Each point has correct schema (fragment_id, label, preview, score, result_index)
+    """
+    from voogle import settings
+
+    # Set up embeddings (reuse from query test pattern)
+    provider = embedding.get_embeddings_provider()
+    qdrant_client = vector.get_configured_client()
+    collection_name = vector.get_collection_name(settings.settings.embeddings_provider)
+
+    vector.ensure_collection(
+        qdrant_client, collection_name, provider.get_embedding_dimension()
+    )
+
+    tr = transcription.read_transcription(await storage.transcription_file(fake_episode))
+    embs, fragments = embedding._transcription_embeddings(
+        tr, provider, embedding.DEFAULT_FRAGMENT_WORDS
+    )
+    await vector.add_episode(
+        fake_episode, qdrant_client, embs, collection_name, fragments
+    )
+
+    response = client.get("/media/query/visualize?query_text=golf&k=10")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    # Verify structure
+    assert "points" in data
+    assert "query_point" in data
+    assert isinstance(data["points"], list)
+    assert len(data["points"]) >= 2  # Need at least 2 for projection
+
+    # Verify query point
+    assert "x" in data["query_point"]
+    assert "y" in data["query_point"]
+    assert isinstance(data["query_point"]["x"], float)
+    assert isinstance(data["query_point"]["y"], float)
+
+    # Verify result points
+    for i, point in enumerate(data["points"]):
+        assert "x" in point
+        assert "y" in point
+        assert "fragment_id" in point
+        assert "label" in point
+        assert "preview" in point
+        assert "score" in point
+        assert "result_index" in point
+        assert point["result_index"] == i
+        assert isinstance(point["x"], float)
+        assert isinstance(point["y"], float)
+        assert isinstance(point["score"], float)
+
+
+@pytest.mark.description("Visualization endpoint validates k parameter minimum")
+async def test_visualization_endpoint_k_parameter(
+    fake_channel: models.media.Channel,
+    fake_episode: models.media.Episode,
+    client: TestClient,
+) -> None:
+    """Test that the visualization endpoint works with different k values.
+
+    This test verifies:
+    1. The endpoint handles small k values appropriately
+    2. Returns points matching the requested k (up to available results)
+    """
+    from voogle import settings
+
+    # Set up embeddings
+    provider = embedding.get_embeddings_provider()
+    qdrant_client = vector.get_configured_client()
+    collection_name = vector.get_collection_name(settings.settings.embeddings_provider)
+
+    vector.ensure_collection(
+        qdrant_client, collection_name, provider.get_embedding_dimension()
+    )
+
+    tr = transcription.read_transcription(await storage.transcription_file(fake_episode))
+    embs, fragments = embedding._transcription_embeddings(
+        tr, provider, embedding.DEFAULT_FRAGMENT_WORDS
+    )
+    await vector.add_episode(
+        fake_episode, qdrant_client, embs, collection_name, fragments
+    )
+
+    # Request with k=3
+    response = client.get("/media/query/visualize?query_text=golf&k=3")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["points"]) >= 2  # At least 2 for valid projection
+    assert len(data["points"]) <= 3  # No more than requested

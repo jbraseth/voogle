@@ -14,8 +14,10 @@ from datetime import datetime, timezone
 from functools import cache
 from typing import NamedTuple, Optional, Union
 
+import numpy as np
 import qdrant_client
 from qdrant_client import models
+from sklearn.decomposition import PCA
 
 from voogle import embedding, settings, storage
 from voogle.models import Episode
@@ -223,3 +225,120 @@ def search(
         )
         for r in results
     ]
+
+
+class SearchResultWithVector(NamedTuple):
+    response: QueryResponse
+    vector: np.ndarray
+
+
+def search_with_vectors(
+    client: qdrant_client.QdrantClient,
+    query_embedding: embedding.Embeddings,
+    collection_name: str,
+    num_results: int,
+    query_filter: Optional[models.Filter] = None,
+) -> list[SearchResultWithVector]:
+    """Perform a query and return results with their embedding vectors.
+
+    This is used for visualization where we need both the query results
+    and their embedding vectors for 2D projection.
+    """
+    results = client.query_points(
+        collection_name=collection_name,
+        query=query_embedding[0].tolist(),
+        query_filter=query_filter,
+        limit=num_results,
+        with_vectors=True,
+    ).points
+
+    return [
+        SearchResultWithVector(
+            response=QueryResponse(
+                score=r.score,
+                episode=r.payload["episode"],  # type: ignore[index]
+                channel=r.payload["channel"],  # type: ignore[index]
+                start_secs=r.payload["start_secs"],  # type: ignore[index]
+                end_secs=r.payload["end_secs"],  # type: ignore[index]
+                text=r.payload["text"],  # type: ignore[index]
+            ),
+            vector=np.array(r.vector),
+        )
+        for r in results
+    ]
+
+
+class ProjectedPoint(NamedTuple):
+    x: float
+    y: float
+    fragment_id: str
+    label: str
+    preview: str
+    score: float
+
+
+class ProjectionResult(NamedTuple):
+    points: list[ProjectedPoint]
+    query_point: Optional[tuple[float, float]]
+
+
+def project_embeddings_2d(
+    query_embedding: embedding.Embeddings,
+    result_embeddings: list[np.ndarray],
+    results: list[QueryResponse],
+) -> ProjectionResult:
+    """Project query and result embeddings to 2D using PCA.
+
+    Args:
+        query_embedding: The query embedding vector (shape: (1, dim) or (dim,)).
+        result_embeddings: List of result embedding vectors.
+        results: List of QueryResponse objects with metadata.
+
+    Returns:
+        ProjectionResult with 2D coordinates for all points.
+
+    Raises:
+        ValueError: If fewer than 2 result embeddings are provided.
+    """
+    if len(result_embeddings) < 2:
+        raise ValueError("At least 2 result embeddings required for projection")
+
+    # Flatten query embedding if needed
+    query_vec = np.array(query_embedding).flatten()
+
+    # Stack all embeddings: query first, then results
+    all_embeddings = np.vstack([query_vec.reshape(1, -1)] + [e.reshape(1, -1) for e in result_embeddings])
+
+    # Check for degenerate case: all embeddings identical
+    if np.allclose(all_embeddings, all_embeddings[0]):
+        raise ValueError("All embeddings are identical, cannot compute projection")
+
+    # Apply PCA to reduce to 2D
+    n_components = min(2, all_embeddings.shape[0], all_embeddings.shape[1])
+    pca = PCA(n_components=n_components)
+    projected = pca.fit_transform(all_embeddings)
+
+    # Handle edge case where PCA only returns 1 component
+    if projected.shape[1] == 1:
+        projected = np.hstack([projected, np.zeros((projected.shape[0], 1))])
+
+    # Extract query point (first row)
+    query_x, query_y = float(projected[0, 0]), float(projected[0, 1])
+
+    # Build result points (rows 1 onwards)
+    points = []
+    for i, r in enumerate(results):
+        x, y = float(projected[i + 1, 0]), float(projected[i + 1, 1])
+        # Create a human-readable label
+        label = f"{r.text[:30]}..." if len(r.text) > 30 else r.text
+        preview = r.text[:50] if len(r.text) > 50 else r.text
+        points.append(ProjectedPoint(
+            x=x,
+            y=y,
+            fragment_id=f"{r.episode}_{r.start_secs}",
+            label=label,
+            preview=preview,
+            score=r.score,
+        ))
+
+    return ProjectionResult(points=points, query_point=(query_x, query_y))
