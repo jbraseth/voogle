@@ -1,0 +1,39 @@
+#!/bin/bash
+# Start development environment with auto-derived ports.
+#
+# This script sources ports from dev-ports.py (based on project directory name)
+# then runs docker-compose. This enables multiple repo copies to run in parallel.
+#
+# Usage:
+#   ./infra/dev-up           # Start all services
+#   ./infra/dev-up -d        # Start in detached mode
+#   ./infra/dev-up --build   # Rebuild images first
+#   ./infra/dev-up logs -f   # View logs (any docker-compose command works)
+#
+# To see your assigned ports:
+#   python infra/dev-ports.py --show
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Source port assignments
+eval "$("$PROJECT_ROOT/infra/dev_ports.py")"
+
+# Default to 'up' if no command given
+CMD="${1:-up}"
+shift 2>/dev/null || true
+
+# Show ports on startup for 'up' command
+if [ "$CMD" = "up" ]; then
+    echo "Starting $(basename "$PROJECT_ROOT") development environment"
+    echo "  Frontend:   http://localhost:$VOOGLE_FRONTEND_PORT"
+    echo "  API:        http://localhost:$VITE_API_PORT/service/docs"
+    echo "  Management: http://localhost:$VOOGLE_MANAGEMENT_PORT"
+    echo "  Qdrant:     http://localhost:$VOOGLE_QDRANT_PORT"
+    echo ""
+fi
+
+cd "$PROJECT_ROOT/infra/development"
+exec docker compose "$CMD" "$@"

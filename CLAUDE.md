@@ -84,6 +84,7 @@ npm run dev                      # Vite dev server with HMR
 ### 2. Docker Dev with Hot Reload (Full Stack)
 
 **Complete dev environment** - All services in Docker with bind mounts for hot reload.
+**Supports parallel development** - Multiple repo copies can run simultaneously.
 
 ```bash
 # First time setup
@@ -93,18 +94,31 @@ cp .env.example .env              # Create your env file
 # Build images (first time or after dependency changes)
 cd infra && make dev-build
 
-# Run all services with hot reload
-make dev-run
+# Run all services with hot reload (auto-derives ports from directory name)
+./infra/dev-up
+
+# Or with options
+./infra/dev-up -d                 # Detached mode
+./infra/dev-up --build            # Rebuild first
 
 # Services auto-reload when you edit files!
 ```
 
-**Ports**:
-- Frontend: http://localhost:80
-- Backend API: http://localhost:81/service/docs
-- Management UI: http://localhost:8501
-- Redis: internal (redis:6379)
-- Qdrant: internal (qdrant:6333)
+**Ports** (auto-derived from directory name for parallel development):
+```bash
+# See your assigned ports
+python infra/dev_ports.py --show
+
+# Example for voogle-copy3:
+#   Frontend:   http://localhost:8110
+#   API:        http://localhost:8111/service/docs
+#   Management: http://localhost:8610
+#   Qdrant:     http://localhost:6363
+```
+
+**Parallel Development**: Ports are deterministically derived from the project directory name.
+Each `voogle-copyN` gets unique ports (offset = N * 10), enabling multiple instances to run
+without conflicts. E2E tests auto-detect the correct ports.
 
 **How it works**:
 - Backend: Mounts `../../backend/` → uvicorn --reload watches files
@@ -334,6 +348,8 @@ voogle/
 ├── infra/                        # Infrastructure & deployment
 │   ├── development/             # Dev environment (compose.yml, .env.example)
 │   ├── production/              # Prod environment (Traefik, replicas)
+│   ├── dev_ports.py             # Port derivation (enables parallel dev)
+│   ├── dev-up                   # Start dev environment with auto-ports
 │   └── makefile                 # Infrastructure commands
 ├── .github/workflows/            # CI/CD
 │   ├── backend.yml              # Lint + Test on PRs
