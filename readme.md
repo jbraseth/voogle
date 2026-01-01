@@ -29,11 +29,22 @@ users to index their own audio files.
 You can run **your own instance** of Voogle in your server, it
 doesn't depend on any external paid service.
 
+```bash
+# Pull and start all services
+docker compose -f compose.quickstart.yml up -d
+
+# View logs
+docker compose -f compose.quickstart.yml logs -f
+
+# Access the application
+# Frontend: http://localhost:80
+# API: http://localhost:81/docs
+# Management: http://localhost:8501
 ```
-mkdir voogle && cd "voogle"
-curl https://raw.githubusercontent.com/jbraseth/voogle/main/infra/production/compose.yml -o compose.yml
-docker compose up
-```
+
+Images are hosted on GitHub Container Registry and require no authentication:
+- `ghcr.io/jbraseth/voogle-backend:latest`
+- `ghcr.io/jbraseth/voogle-ui:latest`
 
 You will need an admin user and password. By default user
 `voogle-admin` with password `*audio*search*engine` will be created.
