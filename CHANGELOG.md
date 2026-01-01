@@ -122,6 +122,17 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 **REASONING**: Placed in `sources/` directory (separate from `collection/`) because it represents a different abstraction level. The adapter doesn't touch the database directly - it produces files + RSS that existing `collection/feed.py` can ingest. Uses yt-dlp with no cookies by default (privacy-respecting).
 
 ### Fixed
+- **E2E tests now fail on browser console errors** (#37)
+  - `console_monitor` fixture updated to treat console errors (type="error") as test failures
+  - `CONSOLE_ERROR_ALLOWLIST` added for benign errors (browser extensions, messaging cleanup)
+  - Warnings continue to be logged but don't fail the test
+  - 11 unit tests verify allowlist matching and failure behavior
+  - Clear failure messages include error text, location, and allowlist suggestion
+
+**WHY**: The Result Map Visualization feature (#32) merged with runtime 404 and JS errors because `console_monitor` only failed on `page_errors`, not `console_errors`. This fix ensures E2E tests catch all real browser errors.
+
+**REASONING**: Errors (type="error") indicate real bugs like 404s, network failures, and runtime exceptions. Warnings are often framework noise (deprecations, dev-mode hints). Browser extension errors are filtered via regex patterns to avoid false positives in CI.
+
 - **Single-item RSS feeds now parse correctly** (#23)
   - Added `_normalize_items()` helper to handle xmltodict dict vs list edge case
   - When RSS has exactly one `<item>`, xmltodict returns a dict instead of list

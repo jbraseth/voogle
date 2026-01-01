@@ -19,10 +19,70 @@ The tests are parametrized to cover both:
 - Local channels (served via /local/ route)
 """
 
+import re
+
 import httpx
 import pytest
 from e2e.pages.voogle import Voogle
 from playwright.sync_api import ConsoleMessage, Error, Page, expect
+
+# Patterns for console errors that are NOT application bugs.
+# Browser extensions, third-party noise, etc.
+CONSOLE_ERROR_ALLOWLIST = [
+    r"chrome-extension://",  # Chrome browser extensions
+    r"moz-extension://",  # Firefox browser extensions
+    r"Failed to fetch.*extension",  # Extension fetch failures
+    r"message channel closed",  # Extension messaging cleanup
+]
+
+
+def _is_allowlisted(error_text: str) -> bool:
+    """Check if an error message matches any allowlist pattern."""
+    return any(re.search(pattern, error_text) for pattern in CONSOLE_ERROR_ALLOWLIST)
+
+
+def _check_console_errors(console_monitor: dict) -> None:
+    """Check console errors and fail if any non-allowlisted errors found.
+
+    Warnings are logged but don't fail the test.
+    Errors (type="error") fail unless they match an allowlist pattern.
+    Page errors always fail.
+    """
+    # Separate warnings from errors
+    warnings = [e for e in console_monitor["console_errors"] if e["type"] == "warning"]
+    errors = [e for e in console_monitor["console_errors"] if e["type"] == "error"]
+
+    # Log warnings (informational only)
+    if warnings:
+        print("\n    Console warnings detected (non-blocking):")
+        for w in warnings:
+            print(f"      [WARNING] {w['text']}")
+
+    # Filter errors through allowlist
+    real_errors = [e for e in errors if not _is_allowlisted(e["text"])]
+
+    # Log allowlisted errors for transparency
+    allowlisted = [e for e in errors if _is_allowlisted(e["text"])]
+    if allowlisted:
+        print("\n    Allowlisted console errors (ignored):")
+        for e in allowlisted:
+            print(f"      [ALLOWLISTED] {e['text']}")
+
+    # Fail on real errors
+    if real_errors:
+        error_details = "\n".join(
+            f"  - {e['text']}\n    Location: {e.get('location', 'unknown')}"
+            for e in real_errors
+        )
+        pytest.fail(
+            f"Browser console errors detected:\n{error_details}\n\n"
+            f"If this is a false positive, add a pattern to CONSOLE_ERROR_ALLOWLIST"
+        )
+
+    # Page errors always fail (uncaught exceptions)
+    if console_monitor["page_errors"]:
+        pytest.fail(f"Uncaught page errors: {console_monitor['page_errors']}")
+
 
 pytestmark = pytest.mark.e2e
 
@@ -224,17 +284,7 @@ def test_voogle_search_and_playback(
     # ========================================
     # Step 7: Check for console errors
     # ========================================
-    if console_monitor["console_errors"]:
-        print("\n    Console warnings/errors detected:")
-        for error in console_monitor["console_errors"]:
-            print(f"      [{error['type'].upper()}] {error['text']}")
-
-    if console_monitor["page_errors"]:
-        print("\n    Page errors detected:")
-        for error in console_monitor["page_errors"]:
-            print(f"      {error}")
-        # Page errors are critical - fail the test
-        pytest.fail(f"Page errors occurred: {console_monitor['page_errors']}")
+    _check_console_errors(console_monitor)
 
     print("\n    E2E test completed successfully!")
 
@@ -261,10 +311,8 @@ def test_home_page_loads(
     )
     assert logo.count() > 0, "Home page did not load"
 
-    # Check for page errors
-    assert len(console_monitor["page_errors"]) == 0, (
-        f"Page errors on home page: {console_monitor['page_errors']}"
-    )
+    # Check for console errors
+    _check_console_errors(console_monitor)
 
 
 def test_query_page_loads(
@@ -293,10 +341,8 @@ def test_query_page_loads(
     # Verify search button is visible
     expect(voogle.query.search_btn).to_be_visible()
 
-    # Check for page errors
-    assert len(console_monitor["page_errors"]) == 0, (
-        f"Page errors on query page: {console_monitor['page_errors']}"
-    )
+    # Check for console errors
+    _check_console_errors(console_monitor)
 
 
 @pytest.mark.parametrize("config", CHANNEL_TEST_CONFIGS)
@@ -389,8 +435,105 @@ def test_channel_type_playback(
 
     print(f"    Audio player appeared for {channel_type} channel")
 
-    # Check for page errors
-    if console_monitor["page_errors"]:
-        pytest.fail(f"Page errors: {console_monitor['page_errors']}")
+    # Check for console errors
+    _check_console_errors(console_monitor)
 
     print(f"    {channel_type.upper()} channel E2E test passed!")
+
+
+# =============================================================================
+# Unit tests for console error detection logic
+# =============================================================================
+
+
+class TestConsoleErrorAllowlist:
+    """Unit tests for console error allowlist matching."""
+
+    def test_chrome_extension_is_allowlisted(self) -> None:
+        """Chrome extension errors should be allowlisted."""
+        assert _is_allowlisted("Failed to load chrome-extension://abc123/script.js")
+
+    def test_firefox_extension_is_allowlisted(self) -> None:
+        """Firefox extension errors should be allowlisted."""
+        assert _is_allowlisted("Error in moz-extension://def456/background.js")
+
+    def test_extension_fetch_failure_is_allowlisted(self) -> None:
+        """Extension fetch failures should be allowlisted."""
+        assert _is_allowlisted("Failed to fetch resource from extension")
+
+    def test_message_channel_closed_is_allowlisted(self) -> None:
+        """Message channel closed errors should be allowlisted."""
+        assert _is_allowlisted("message channel closed before response")
+
+    def test_app_error_is_not_allowlisted(self) -> None:
+        """Application errors should NOT be allowlisted."""
+        assert not _is_allowlisted("404 Not Found: /api/missing")
+        assert not _is_allowlisted("Uncaught TypeError: Cannot read property 'x'")
+        assert not _is_allowlisted("Failed to load resource: net::ERR_CONNECTION_REFUSED")
+
+
+class TestCheckConsoleErrors:
+    """Unit tests for _check_console_errors behavior."""
+
+    def test_passes_with_no_errors(self) -> None:
+        """Should pass when no errors are present."""
+        monitor = {"console_errors": [], "page_errors": []}
+        # Should not raise
+        _check_console_errors(monitor)
+
+    def test_passes_with_only_warnings(self) -> None:
+        """Should pass when only warnings are present (warnings don't fail)."""
+        monitor = {
+            "console_errors": [
+                {"type": "warning", "text": "Some deprecation warning", "location": {}}
+            ],
+            "page_errors": [],
+        }
+        # Should not raise
+        _check_console_errors(monitor)
+
+    def test_passes_with_allowlisted_errors(self) -> None:
+        """Should pass when all errors match allowlist patterns."""
+        monitor = {
+            "console_errors": [
+                {"type": "error", "text": "chrome-extension://xyz/fail.js", "location": {}}
+            ],
+            "page_errors": [],
+        }
+        # Should not raise
+        _check_console_errors(monitor)
+
+    def test_fails_on_real_console_error(self) -> None:
+        """Should fail when a real (non-allowlisted) console error is present."""
+        monitor = {
+            "console_errors": [
+                {"type": "error", "text": "404 Not Found: /api/missing", "location": {}}
+            ],
+            "page_errors": [],
+        }
+        with pytest.raises(pytest.fail.Exception) as exc_info:
+            _check_console_errors(monitor)
+        assert "Browser console errors detected" in str(exc_info.value)
+        assert "404 Not Found" in str(exc_info.value)
+
+    def test_fails_on_page_error(self) -> None:
+        """Should fail when uncaught page errors are present."""
+        monitor = {
+            "console_errors": [],
+            "page_errors": ["Uncaught ReferenceError: foo is not defined"],
+        }
+        with pytest.raises(pytest.fail.Exception) as exc_info:
+            _check_console_errors(monitor)
+        assert "Uncaught page errors" in str(exc_info.value)
+
+    def test_failure_message_suggests_allowlist(self) -> None:
+        """Failure message should suggest adding to allowlist for false positives."""
+        monitor = {
+            "console_errors": [
+                {"type": "error", "text": "Some third-party error", "location": {}}
+            ],
+            "page_errors": [],
+        }
+        with pytest.raises(pytest.fail.Exception) as exc_info:
+            _check_console_errors(monitor)
+        assert "CONSOLE_ERROR_ALLOWLIST" in str(exc_info.value)
