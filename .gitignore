@@ -114,3 +114,7 @@ output/
 # =============================================================================
 data/
 data-test/
+
+# E2E test manifest is auto-generated from project directory name
+# (enables parallel development across repo copies)
+tests/e2e/manifest.json
