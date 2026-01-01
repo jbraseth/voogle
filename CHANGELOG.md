@@ -8,6 +8,18 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 ## [Unreleased]
 
+### Changed
+- **Quick start compose now uses ghcr.io images** (#49)
+  - Updated `compose.quickstart.yml` to pull from `ghcr.io/jbraseth/voogle-backend:latest` and `ghcr.io/jbraseth/voogle-ui:latest`
+  - Replaced outdated `docker.io/unmonoqueteclea/voogle-backend:3.2.0` and `docker.io/unmonoqueteclea/voogle-ui:0.6.0`
+  - Frontend container port updated from 5173 (dev) to 80 (production nginx)
+  - Removed `--reload` flag from backend command (not needed for production images)
+  - Updated `readme.md` quick start section with correct commands and image references
+
+**WHY**: The old Docker Hub images from the archived Voilib project are stale (v3.2.0/v0.6.0) and missing 6+ months of bug fixes. New users following the README would get outdated software.
+
+**REASONING**: ghcr.io images are built from current main branch via #43 workflow. Public images require no authentication to pull. Using `latest` tag ensures users always get current code.
+
 ### Added
 - **GitHub Container Registry builds with manual trigger** (#43)
   - New `.github/workflows/build-images.yml` workflow with `workflow_dispatch` trigger

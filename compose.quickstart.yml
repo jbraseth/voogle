@@ -2,10 +2,10 @@ name: voogle
 
 services:
   backend:
-    image: docker.io/unmonoqueteclea/voogle-backend:3.2.0
+    image: ghcr.io/jbraseth/voogle-backend:latest
     ports:
       - ${VOOGLE_API_PORT:-81}:80
-    command:  uvicorn src.voogle.main:app --reload --host 0.0.0.0 --port 80
+    command: uvicorn src.voogle.main:app --host 0.0.0.0 --port 80
     volumes:
       - ./data/:/data/
     healthcheck:
@@ -15,22 +15,20 @@ services:
       retries: 50
 
   frontend:
-    image: docker.io/unmonoqueteclea/voogle-ui:0.6.0
+    image: ghcr.io/jbraseth/voogle-ui:latest
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - ${VOOGLE_FRONTEND_PORT:-80}:5173
-    environment:
-      - VITE_API_PORT=${VOOGLE_API_PORT:-81}
+      - ${VOOGLE_FRONTEND_PORT:-80}:80
     healthcheck:
-      test: ["CMD", "curl", "-f", "0.0.0.0:5173"]
+      test: ["CMD", "curl", "-f", "0.0.0.0:80"]
       interval: 6s
       timeout: 10s
       retries: 50
 
   management:
-    image: docker.io/unmonoqueteclea/voogle-backend:3.2.0
+    image: ghcr.io/jbraseth/voogle-backend:latest
     ports:
       - ${VOOGLE_MANAGEMENT_PORT:-8501}:8501
     entrypoint: ""
@@ -48,7 +46,7 @@ services:
       retries: 30
 
   worker:
-    image: docker.io/unmonoqueteclea/voogle-backend:3.2.0
+    image: ghcr.io/jbraseth/voogle-backend:latest
     depends_on:
       redis:
         condition: service_healthy
