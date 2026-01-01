@@ -57,7 +57,7 @@ docker compose up redis qdrant -d
 
 # Terminal 2: Backend with hot reload
 cd backend
-pip install -e .[dev]           # Install in editable mode (first time)
+uv sync --group dev              # Install deps with uv (10-100x faster than pip)
 make migrate                     # Run migrations (first time)
 make start                       # Starts uvicorn with --reload flag
 
@@ -68,6 +68,9 @@ npm run dev                      # Vite dev server with HMR
 
 # Changes to Python/Svelte reload instantly!
 ```
+
+**Note**: This project uses [uv](https://docs.astral.sh/uv/) for Python dependency management.
+Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 **Ports**:
 - Backend API: http://localhost:8080/docs (Swagger)

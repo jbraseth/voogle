@@ -2,30 +2,95 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-FROM python:3.12-slim-bookworm
-# turn off buffering to see some output
-# (see https://stackoverflow.com/a/57801848/8071370)
-ENV PYTHONUNBUFFERED=1
-# prevent Python to create pyc files
-ENV PYTHONDONTWRITEBYTECODE=1
+# =============================================================================
+# Stage 1: Builder - Install dependencies with uv
+# =============================================================================
+FROM python:3.12-slim-bookworm AS builder
 
-WORKDIR /backend
-# we need curl for the health checks, build-essential to build hnswlib
-# we need ffmpeg to load audios
-RUN apt-get update &&\
-    apt-get install --no-install-recommends -y curl ffmpeg git build-essential &&\
+# Install uv for fast dependency installation
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Install build dependencies (only needed in builder stage)
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    git \
+    build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./requirements.txt /backend/requirements.txt
-RUN pip install -U pip &&\
-    pip install --no-cache-dir -r /backend/requirements.txt
+WORKDIR /app
 
-COPY . .
+# Copy dependency files first (better layer caching)
+COPY pyproject.toml uv.lock ./
 
-# allow installing development dependencies to run tests
-ARG INSTALL_DEV=false
-RUN bash -c "if [ $INSTALL_DEV == 'true' ] ; then pip install -e .[dev] ; else pip install . ; fi"
+# Install dependencies into virtual environment
+# --frozen ensures we use exact versions from lock file
+# --no-install-project skips installing the project itself (we'll do that after copying source)
+RUN uv sync --frozen --no-install-project --no-dev
 
-RUN chmod +x "/backend/bin/entrypoint.sh"
-ENTRYPOINT ["/backend/bin/entrypoint.sh"]
+# Copy source code
+COPY src/ ./src/
+COPY bin/ ./bin/
+
+# Install the project itself
+RUN uv sync --frozen --no-dev
+
+# Replace CUDA PyTorch with CPU-only version (saves ~6GB)
+RUN uv pip uninstall torch torchvision torchaudio nvidia-cublas-cu12 nvidia-cuda-cupti-cu12 nvidia-cuda-nvrtc-cu12 nvidia-cuda-runtime-cu12 nvidia-cudnn-cu12 nvidia-cufft-cu12 nvidia-curand-cu12 nvidia-cusolver-cu12 nvidia-cusparse-cu12 nvidia-cusparselt-cu12 nvidia-nccl-cu12 nvidia-nvjitlink-cu12 nvidia-nvtx-cu12 triton 2>/dev/null || true && \
+    uv pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# =============================================================================
+# Stage 2: Runtime - Minimal image with only runtime dependencies
+# =============================================================================
+FROM python:3.12-slim-bookworm AS runtime
+
+# Prevent Python from buffering stdout/stderr
+ENV PYTHONUNBUFFERED=1
+# Prevent Python from creating .pyc files
+ENV PYTHONDONTWRITEBYTECODE=1
+# Add virtual environment to PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# Install only runtime dependencies (no build tools)
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    curl \
+    ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder (includes all Python deps + project)
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application files
+COPY --from=builder /app/src /app/src
+COPY --from=builder /app/bin /app/bin
+
+RUN chmod +x "/app/bin/entrypoint.sh"
+
+ENTRYPOINT ["/app/bin/entrypoint.sh"]
 CMD ["uvicorn", "src.voogle.main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
+
+# =============================================================================
+# Stage 3: Development - Includes dev dependencies for testing
+# =============================================================================
+FROM builder AS development
+
+# Install dev dependencies
+RUN uv sync --frozen --group dev
+
+# Runtime deps for dev
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    curl \
+    ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PATH="/app/.venv/bin:$PATH"
+
+RUN chmod +x "/app/bin/entrypoint.sh"
+
+ENTRYPOINT ["/app/bin/entrypoint.sh"]
+CMD ["uvicorn", "src.voogle.main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80", "--reload"]

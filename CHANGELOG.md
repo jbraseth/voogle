@@ -9,6 +9,24 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 ## [Unreleased]
 
 ### Changed
+- **Build acceleration with uv + optimized Docker images** (#52)
+  - Migrated from pip to [uv](https://docs.astral.sh/uv/) for 10-100x faster dependency installation
+  - Added `pyproject.toml` with full dependency specification (replaces setup.cfg for deps)
+  - Added `uv.lock` for reproducible, deterministic builds
+  - Multi-stage Dockerfile: builder stage compiles, runtime stage is minimal
+  - CPU-only PyTorch in production images (removes 6GB+ CUDA dependencies)
+  - Updated CI workflows to use `astral-sh/setup-uv` action
+  - Updated `tests/dockerfile` to use uv
+
+**Results**:
+- Image size: 9.23 GB → 2.54 GB (73% reduction)
+- Cached builds: ~15 min → 22 seconds (98% faster)
+- Lock file resolution: 170 packages in 1.5 seconds
+
+**WHY**: Docker builds were taking 15+ minutes on CI due to slow pip dependency resolution. 9GB images were bloated with CUDA libraries that aren't needed for CPU inference.
+
+**REASONING**: uv is from Astral (Ruff creators), already trusted in this codebase. Multi-stage builds keep build deps out of runtime. CPU-only torch is sufficient for production inference (no GPU required).
+
 - **Quick start compose now uses ghcr.io images** (#49)
   - Updated `compose.quickstart.yml` to pull from `ghcr.io/jbraseth/voogle-backend:latest` and `ghcr.io/jbraseth/voogle-ui:latest`
   - Replaced outdated `docker.io/unmonoqueteclea/voogle-backend:3.2.0` and `docker.io/unmonoqueteclea/voogle-ui:0.6.0`

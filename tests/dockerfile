@@ -1,13 +1,16 @@
 # Copyright (c) 2025-2026 Voogle Contributors
-# Test/CI base image - has all dependencies, code mounted at runtime
+# Test/CI base image - optimized with uv for fast builds
 
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app/tests:/app/src
+ENV PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
+
+# Install uv for fast dependency installation
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Install system dependencies
 RUN apt-get update && \
@@ -18,23 +21,28 @@ RUN apt-get update && \
     build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-# Install application dependencies
-COPY ./backend/requirements.txt /app/requirements.txt
-RUN pip install -U pip && \
-    pip install --no-cache-dir -r /app/requirements.txt
+# Copy dependency files first (better layer caching)
+COPY ./backend/pyproject.toml ./backend/uv.lock ./
 
-# Install dev dependencies from pyproject.toml extras
-COPY ./backend/pyproject.toml ./backend/setup.cfg /app/
-COPY ./backend/src /app/src
-RUN pip install -e .[dev]
+# Install all dependencies including dev group
+RUN uv sync --frozen --group dev
 
-# Install CPU-only torch (override any CUDA deps)
-RUN pip uninstall -y torch torchvision torchaudio 2>/dev/null || true && \
-    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# Install CPU-only torch (override any CUDA deps for smaller CI image)
+RUN uv pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-# Install test dependencies (excluding playwright - e2e tests run separately)
-COPY ./tests/requirements.txt /app/requirements-test.txt
-RUN pip install --no-cache-dir -r /app/requirements-test.txt
+# Copy source code
+COPY ./backend/src ./src
+COPY ./backend/bin ./bin
+
+# Install the project
+RUN uv sync --frozen --group dev
+
+# Install additional test dependencies
+COPY ./tests/requirements.txt ./requirements-test.txt
+RUN uv pip install --no-cache-dir -r ./requirements-test.txt
+
+# Set PYTHONPATH for test discovery
+ENV PYTHONPATH=/app/src:/workspace/tests:/workspace/backend/src
 
 # Working directory for running commands
 WORKDIR /workspace
