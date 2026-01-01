@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-
 from voogle.collection.url_health import (
     URLStatus,
     check_url,

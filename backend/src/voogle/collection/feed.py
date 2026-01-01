@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import xml.parsers.expat
+from dataclasses import dataclass
 from datetime import datetime
 
 import dateutil.parser
@@ -22,6 +23,9 @@ from voogle import models
 
 IGNORE_EPISODES_TYPES: list[str] = ["bonus", "trailer"]
 
+# MIME types that indicate a resource (not an episode)
+RESOURCE_MIME_TYPES: set[str] = {"application/pdf"}
+
 LANGUAGES_MAP = {
     "es-ES": "es",
     "en-US": "en",
@@ -29,6 +33,30 @@ LANGUAGES_MAP = {
     "en-us": "en",
 }
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ResourceData:
+    """Data for a resource extracted from an RSS feed.
+
+    This is not a database model - just a container for parsed data.
+    """
+
+    guid: str
+    title: str
+    description: str
+    original_url: str
+    mime_type: str
+    date: datetime | None = None
+
+
+def _is_resource_item(item: dict) -> bool:
+    """Check if an RSS item is a resource (PDF, etc.) rather than an episode."""
+    enclosure = item.get("enclosure", {})
+    if not enclosure:
+        return False
+    mime_type = enclosure.get("@type", "")
+    return mime_type in RESOURCE_MIME_TYPES
 
 
 def _channel_img(channel_info: dict) -> str:
@@ -107,6 +135,8 @@ def read_channel(url: str, language: str | None = None) -> models.Channel | None
 def read_episodes(channel: models.Channel) -> list[models.Episode]:
     """Return a list with all the episodes (not stored yet in db) from
     a given channel.
+
+    Note: Resource items (PDFs, etc.) are skipped. Use read_resources() for those.
     """
     logger.info(f"reading episodes from channel: {channel.id}: {channel.title}")
     feed = _read_channel_feed(str(channel.feed))
@@ -114,6 +144,9 @@ def read_episodes(channel: models.Channel) -> list[models.Episode]:
         return []
     episodes: list[models.Episode] = []
     for ep in _normalize_items(feed["rss"]["channel"]):
+        # Skip resource items (PDFs) - those are handled by read_resources()
+        if _is_resource_item(ep):
+            continue
         if ep.get("itunes:episodeType", None) not in ["bonus", "trailer"]:
             title = ep.get("title", None)
             if title:
@@ -134,3 +167,39 @@ def read_episodes(channel: models.Channel) -> list[models.Episode]:
                 logger.warning(f"episode without title: {ep} won't be stored")
     logger.info(f"{len(episodes)} episodes parsed from channel {channel.title}")
     return episodes
+
+
+def read_resources(channel: models.Channel) -> list[ResourceData]:
+    """Return a list of resources (PDFs, etc.) from a channel's feed.
+
+    Resources are non-audio items like PDFs that should be stored
+    separately from episodes.
+    """
+    logger.info(f"reading resources from channel: {channel.id}: {channel.title}")
+    feed = _read_channel_feed(str(channel.feed))
+    if feed is None:
+        return []
+
+    resources: list[ResourceData] = []
+    for item in _normalize_items(feed["rss"]["channel"]):
+        if not _is_resource_item(item):
+            continue
+
+        title = item.get("title")
+        if not title:
+            logger.warning(f"resource without title: {item} won't be stored")
+            continue
+
+        enclosure = item.get("enclosure", {})
+        resource = ResourceData(
+            guid=_episode_guid(item.get("guid", title)),
+            title=title,
+            description=item.get("description", "") or "",
+            original_url=enclosure.get("@url", ""),
+            mime_type=enclosure.get("@type", "application/pdf"),
+            date=_episode_date(item["pubDate"]) if item.get("pubDate") else None,
+        )
+        resources.append(resource)
+
+    logger.info(f"{len(resources)} resources parsed from channel {channel.title}")
+    return resources

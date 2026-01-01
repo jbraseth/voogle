@@ -12,10 +12,14 @@ from __future__ import annotations
 import importlib.resources
 import json
 import logging
+from pathlib import Path
 
-from voogle import models, storage
+import requests
+
+from voogle import models, settings, storage
 from voogle.collection import feed, local
 from voogle.sources import generator as source_generator
+from voogle.utils import slugify
 
 logger = logging.getLogger(__name__)
 
@@ -207,4 +211,123 @@ async def update_channel(
         new_added += 1 if added else 0
         if max_new_episodes and new_added == max_new_episodes:
             break
+    return new_added
+
+
+def _resource_path(channel: models.Channel, filename: str) -> Path:
+    """Return the path where a resource file should be stored.
+
+    Resources are stored in: data/media/{channel-slug}/resources/{filename}
+    """
+    channel_folder = storage.channel_folder_name(channel)
+    resources_dir = settings.settings.media_folder / channel_folder / "resources"
+    resources_dir.mkdir(parents=True, exist_ok=True)
+    return resources_dir / filename
+
+
+def _resource_filename(url: str, title: str) -> str:
+    """Generate a filename for a resource from its URL and title."""
+    # Try to extract extension from URL
+    url_path = url.split("?")[0]  # Remove query params
+    if "." in url_path:
+        ext = url_path.split(".")[-1].lower()
+        if ext in ("pdf", "docx", "pptx", "xlsx"):
+            return f"{slugify(title[:40])}.{ext}"
+    # Default to .pdf for PDFs
+    return f"{slugify(title[:40])}.pdf"
+
+
+def _resource_local_path(channel: models.Channel, filename: str) -> str:
+    """Return the relative path for storing in the database."""
+    channel_folder = storage.channel_folder_name(channel)
+    return f"{channel_folder}/resources/{filename}"
+
+
+async def _download_resource(url: str, output_path: Path) -> int:
+    """Download a resource file and return its size in bytes.
+
+    Returns 0 if download fails.
+    """
+    try:
+        logger.info(f"downloading resource from {url}")
+        response = requests.get(url, allow_redirects=True, timeout=60)
+        response.raise_for_status()
+        with output_path.open("wb") as f:
+            f.write(response.content)
+        return len(response.content)
+    except requests.RequestException as e:
+        logger.error(f"failed to download resource from {url}: {e}")
+        return 0
+
+
+async def _maybe_add_resource(
+    channel: models.Channel, resource_data: feed.ResourceData
+) -> models.Resource | None:
+    """Add a new resource only if it doesn't exist yet.
+
+    Downloads the resource file and creates the database record.
+    Returns None if the resource already exists.
+    """
+    # Check if resource already exists
+    existing = await models.Resource.objects.get_or_none(guid=resource_data.guid)
+    if existing is not None:
+        logger.debug(f"ignoring resource {resource_data.guid} as it already exists")
+        return None
+
+    # Generate filename and paths
+    filename = _resource_filename(resource_data.original_url, resource_data.title)
+    file_path = _resource_path(channel, filename)
+    local_path = _resource_local_path(channel, filename)
+
+    # Download the resource
+    file_size = 0
+    if not file_path.exists():
+        file_size = await _download_resource(resource_data.original_url, file_path)
+    else:
+        file_size = file_path.stat().st_size
+        logger.debug(f"resource file already exists: {file_path}")
+
+    # Determine resource kind from MIME type
+    kind = models.ResourceKind.PDF.value  # Default to PDF
+    if "pdf" in resource_data.mime_type.lower():
+        kind = models.ResourceKind.PDF.value
+
+    # Create the resource record
+    logger.info(f"creating resource {resource_data.title} in channel {channel.id}")
+    resource = models.Resource(
+        channel=channel,
+        guid=resource_data.guid,
+        kind=kind,
+        title=resource_data.title,
+        description=resource_data.description,
+        original_url=resource_data.original_url,
+        local_path=local_path if file_size > 0 else "",
+        file_size_bytes=file_size,
+        mime_type=resource_data.mime_type,
+        extracted=False,
+        embeddings=False,
+    )
+    await resource.save()
+    return resource
+
+
+async def update_channel_resources(channel: models.Channel) -> int:
+    """Read a channel feed and store all new resources (PDFs, etc.).
+
+    Downloads resource files to local storage and creates Resource records.
+    Return the number of resources added.
+    """
+    logger.info(f"updating resources for channel {channel.title}")
+
+    # Local folder channels don't have RSS feeds with resources
+    if channel.local_folder != "":
+        return 0
+
+    resource_data_list = feed.read_resources(channel)
+    new_added = 0
+    for resource_data in resource_data_list:
+        added = await _maybe_add_resource(channel, resource_data)
+        new_added += 1 if added else 0
+
+    logger.info(f"added {new_added} resources to channel {channel.title}")
     return new_added

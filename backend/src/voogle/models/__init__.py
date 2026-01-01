@@ -8,4 +8,6 @@ from .analytics import Query as Query
 from .media import Channel as Channel
 from .media import ChannelKind as ChannelKind
 from .media import Episode as Episode
+from .resource import Resource as Resource
+from .resource import ResourceKind as ResourceKind
 from .users import User as User

@@ -4,7 +4,302 @@ Active tasks and implementation plans for Voogle.
 
 ---
 
-## Active: BibleProject Classroom Compound Episodes (Issue #31)
+## Active: PDF Ingestion Staging - Collect and Link (Issue #41)
+
+**Goal**: Stage PDF ingestion capability by collecting PDFs from BibleProject Classroom and linking them to sessions. This first PR handles collection and linking only; extraction/chunking/embedding will be a follow-up PR.
+
+**Status**: In Progress
+
+**Branch**: `feat/41-pdf-ingestion-staging`
+
+**Issue**: https://github.com/jbraseth/voogle/issues/41
+
+**Milestone**: D - BibleProject Classroom Rich Series (D2)
+
+---
+
+### Problem Statement
+
+BibleProject Classroom sessions often include "Teacher Notes" PDFs that contain valuable lesson summaries, diagrams, and discussion questions. Currently, even though the BibleProject adapter detects PDF URLs and includes them in RSS feeds, the PDFs are:
+
+1. Not downloaded locally (the URL might 404 later)
+2. Not visible in the UI (no API to list PDFs for a session)
+3. Not searchable (no text extraction or embedding)
+
+This PR addresses issues #1 and #2 - ensuring PDFs are collected, stored, and queryable. A follow-up PR (D2-follow-up) will add text extraction and embedding for searchability.
+
+**User Story**: As a theology student, I want to see all PDFs associated with a BibleProject course so I can download them for offline study, even if the original URL changes.
+
+---
+
+### Architecture Decision: Resource Table vs Episode Extension
+
+**Chosen Approach: Option A - New Resource Table**
+
+After analyzing the codebase, Option A (new `Resource` table) is the best fit:
+
+| Option | Pros | Cons |
+|--------|------|------|
+| A. New `Resource` table | Clean separation, extensible to videos/slides, no Episode field pollution | New table + migration |
+| B. Extend Episode | Reuse existing model | Episode semantics are "playable media", PDFs aren't episodes |
+| C. Separate PDF table | Simple | Not extensible to other resource types |
+
+The `Resource` table design allows future expansion (video slides, diagrams, study guides) without schema changes.
+
+---
+
+### Data Model
+
+```python
+# backend/src/voogle/models/resource.py
+
+class ResourceKind(enum.Enum):
+    PDF = "pdf"
+    # Future: SLIDE_DECK = "slide_deck", VIDEO = "video", etc.
+
+
+class Resource(base.CoreModel):
+    """A downloadable resource linked to a channel (course) or specific episode (session).
+
+    Resources are non-audio artifacts like PDFs, slide decks, or supplemental materials.
+    Unlike episodes, resources are not transcribed - they have their own extraction pipeline.
+
+    Table: resources
+    """
+
+    ormar_config = ormar.OrmarConfig(
+        tablename="resources",
+        constraints=[ormar.UniqueColumns("guid")],
+    )
+
+    # Relationships - resource can be linked to channel, episode, or both
+    channel: Optional[Channel] = ormar.ForeignKey(
+        Channel,
+        related_name="resources",
+        ondelete=ormar.ReferentialAction.CASCADE,
+    )
+    episode: Optional[Episode] = ormar.ForeignKey(
+        Episode,
+        related_name="resources",
+        ondelete=ormar.ReferentialAction.SET_NULL,
+        nullable=True,
+    )
+
+    # Identity
+    guid = ormar.Text()  # e.g., "bibleproject:htrtb:s1:pdf"
+    kind = ormar.String(max_length=20, choices=list(ResourceKind))
+
+    # Metadata
+    title = ormar.String(max_length=250)
+    description = ormar.Text(default="")
+
+    # URLs - original and local
+    original_url = ormar.Text()  # Where we fetched it from
+    local_path = ormar.Text(default="")  # Relative path in media folder (empty if not downloaded)
+
+    # File metadata
+    file_size_bytes = ormar.Integer(default=0)
+    mime_type = ormar.String(max_length=100, default="application/pdf")
+
+    # Processing status (for future D2-follow-up)
+    extracted = ormar.Boolean(default=False)  # Text extracted?
+    embeddings = ormar.Boolean(default=False)  # Embeddings calculated?
+```
+
+**Key Design Decisions**:
+
+1. **guid is unique**: Each resource has a stable identifier (same format as episode guids)
+2. **original_url vs local_path**: Store both so we can re-fetch if local copy is missing
+3. **Optional episode link**: Some resources are course-level, not session-specific
+4. **CASCADE on channel delete**: If a course is removed, its resources go too
+5. **SET_NULL on episode delete**: Resource remains if linked episode is removed
+6. **extracted/embeddings flags**: Ready for D2-follow-up PR (initially always False)
+
+---
+
+### Implementation Plan
+
+#### Step 1: Create Resource Model + Migration
+
+**Files Created**:
+- `backend/src/voogle/models/resource.py` - New Resource model
+- `backend/migrations/versions/XXXX_add_resource_table.py` - Alembic migration
+
+**Changes to Existing Files**:
+- `backend/src/voogle/models/__init__.py` - Export Resource model
+- `backend/src/voogle/db.py` - Register Resource in metadata
+
+**Testing**: Run `make migrate` and verify table created
+
+#### Step 2: Extend BibleProject Adapter to Collect PDFs
+
+The BibleProject adapter already detects PDF URLs (see `bibleproject.py` line 469). We need to:
+
+1. After generating RSS, download PDFs to local storage
+2. Create Resource records linking PDFs to their sessions
+
+**Changes to Existing Files**:
+- `backend/src/voogle/sources/bibleproject.py` - Add `collect_resources()` method
+
+**New Functions**:
+```python
+def collect_resources(self, feeds: list[LocalFeed]) -> list[Resource]:
+    """Download PDFs and create Resource records for generated feeds.
+
+    For each PDF artifact in the RSS feed:
+    1. Parse the RSS to find PDF enclosures
+    2. Download PDF to media folder (idempotent - skip if exists)
+    3. Create or update Resource record in database
+
+    Returns list of Resource objects created/updated.
+    """
+```
+
+**Storage Path**: `data/media/{channel-slug}/resources/{filename}.pdf`
+
+#### Step 3: Add PDF MIME Type to Local Router
+
+**Changes to Existing Files**:
+- `backend/src/voogle/routers/local.py` - Add `.pdf` to `_get_media_type()`
+
+```python
+def _get_media_type(suffix: str) -> str:
+    media_types = {
+        ".mp3": "audio/mpeg",
+        ".pdf": "application/pdf",  # Add PDF support
+        # ... existing types
+    }
+```
+
+#### Step 4: Create Resources API Endpoint
+
+**Files Created**:
+- `backend/src/voogle/routers/resource.py` - New router
+- `backend/src/voogle/schemas/resource.py` - Pydantic schemas
+
+**API Endpoints**:
+```
+GET /media/resource?channel_id=<uuid>  # List resources for a channel
+GET /media/resource?episode_id=<uuid>  # List resources for an episode
+GET /media/resource/{resource_id}      # Get single resource
+```
+
+**Response Schema**:
+```python
+class ResourceOut(BaseModel):
+    id: UUID
+    kind: str
+    title: str
+    description: str
+    original_url: str
+    download_url: str | None  # /local/{channel}/{resources/filename.pdf}
+    file_size_bytes: int
+    extracted: bool
+    embeddings: bool
+```
+
+#### Step 5: Add Tests
+
+**Files Created**:
+- `tests/unit/models/test_resource.py` - Model unit tests
+- `tests/integration/test_resource_api.py` - API integration tests
+- `tests/fixtures/resources/sample.pdf` - Test PDF fixture
+
+**Test Coverage**:
+1. Resource model creation and validation
+2. Resource linking to channel/episode
+3. API list/filter endpoints
+4. PDF download and local storage
+5. MIME type handling in local router
+
+#### Step 6: Update CHANGELOG
+
+**Changes to Existing Files**:
+- `CHANGELOG.md` - Document new Resource model and API
+
+---
+
+### Files Summary
+
+| Action | File |
+|--------|------|
+| Create | `backend/src/voogle/models/resource.py` |
+| Create | `backend/migrations/versions/XXXX_add_resource_table.py` |
+| Create | `backend/src/voogle/routers/resource.py` |
+| Create | `backend/src/voogle/schemas/resource.py` |
+| Create | `tests/unit/models/test_resource.py` |
+| Create | `tests/integration/test_resource_api.py` |
+| Create | `tests/fixtures/resources/sample.pdf` |
+| Modify | `backend/src/voogle/models/__init__.py` |
+| Modify | `backend/src/voogle/db.py` |
+| Modify | `backend/src/voogle/sources/bibleproject.py` |
+| Modify | `backend/src/voogle/routers/local.py` |
+| Modify | `backend/src/voogle/main.py` (register router) |
+| Modify | `CHANGELOG.md` |
+
+---
+
+### Success Criteria
+
+- [ ] New `Resource` model with migration applied
+- [ ] BibleProject adapter downloads PDFs to local storage
+- [ ] Resource records created and linked to channels/episodes
+- [ ] API endpoint returns resources with download URLs
+- [ ] `/local/` endpoint serves PDF files correctly
+- [ ] All existing tests pass (no regressions)
+- [ ] New tests for Resource model and API
+- [ ] CHANGELOG entry added
+
+---
+
+### Verification (REQUIRED before marking complete)
+
+```bash
+# 1. Lint (must pass)
+cd backend && ruff check .
+
+# 2. Unit + Integration tests (must pass)
+pytest tests/ --ignore=tests/e2e -v
+
+# 3. E2E tests (must pass) - requires frontend + backend running
+pytest tests/e2e -v
+```
+
+---
+
+### What This PR Does NOT Include (D2-follow-up scope)
+
+- PDF text extraction (pdfplumber, PyPDF)
+- PDF chunking strategy
+- PDF embedding calculation
+- PDF search results in query API
+- UI for viewing/searching PDF content
+
+These will be implemented in the D2-follow-up PR after this foundation is in place.
+
+---
+
+### Expert Persona Reviews
+
+**Platform Architect (Staged Rollout)**:
+- ✅ PR is self-contained and delivers value even without D2-follow-up
+- ✅ Users can see and download PDFs immediately after this PR
+- ✅ Resource table design is extensible for future resource types
+
+**ML Engineer (Future Embedding)**:
+- ✅ `extracted` and `embeddings` flags ready for D2-follow-up
+- ✅ `guid` format consistent with episodes for vector payload
+- ✅ No schema changes needed for embedding work
+
+**Brutal Critic (Product Manager)**:
+- "PDFs visible in UI, downloadable, associated with sessions" ✅
+- "I can list PDFs for any course and download them" ✅
+- "If source URL 404s, I still have local copy" ✅
+- "Can't search PDF content yet" - Documented as D2-follow-up scope
+
+---
+
+## Previous: BibleProject Classroom Compound Episodes (Issue #31)
 
 **Goal**: Extend the BibleProject Classroom scraper to detect compound sessions: pages that contain multiple Mux playback IDs (main video + slides video) plus PDF teacher notes. Generate RSS feeds that emit separate items for each artifact so Voogle can index them independently.
 

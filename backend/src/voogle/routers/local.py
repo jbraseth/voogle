@@ -57,12 +57,13 @@ async def serve_local_media(channel: str, filename: str) -> FileResponse:
 
 
 def _get_media_type(suffix: str) -> str:
-    """Return appropriate media type for common audio file extensions."""
+    """Return appropriate media type for common media file extensions."""
     media_types = {
         ".mp3": "audio/mpeg",
         ".wav": "audio/wav",
         ".ogg": "audio/ogg",
         ".m4a": "audio/mp4",
         ".flac": "audio/flac",
+        ".pdf": "application/pdf",
     }
     return media_types.get(suffix.lower(), "application/octet-stream")

@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
-
 from voogle.chunking import (
     DEFAULT_CONFIG,
     ChunkingConfig,

@@ -6,9 +6,7 @@
 from pathlib import Path
 
 import pytest
-
 from voogle.sources import ConfigurationError, LocalFeed
-
 
 pytestmark = pytest.mark.unit
 

@@ -7,7 +7,6 @@
 import pathlib
 import shutil
 from datetime import datetime, timezone
-from typing import Any
 
 import pytest
 from voogle import embedding, models, storage, tasks, vector
@@ -368,3 +367,48 @@ async def fixture_mixed_channel_test_data(
     episodes["local"] = jobs_episode
 
     return episodes
+
+
+@pytest.fixture(name="resource")
+async def fixture_resource(channel: models.media.Channel) -> models.Resource:
+    """Create a test resource (PDF) linked to a channel."""
+    resource = await models.Resource.objects.create(
+        channel=channel,
+        guid="test-resource-001",
+        kind=models.ResourceKind.PDF.value,
+        title="Test PDF Resource",
+        description="A test PDF resource for unit testing",
+        original_url="https://example.com/test.pdf",
+        local_path="test-channel/resources/test-pdf.pdf",
+        file_size_bytes=1024,
+        mime_type="application/pdf",
+        extracted=False,
+        embeddings=False,
+    )
+    return resource
+
+
+@pytest.fixture(name="resource_with_episode")
+async def fixture_resource_with_episode(
+    channel: models.media.Channel,
+) -> models.Resource:
+    """Create a test resource linked to both a channel and an episode."""
+    # Get the first episode from the channel
+    episodes = await models.Episode.objects.filter(channel=channel).all()
+    episode = episodes[0] if episodes else None
+
+    resource = await models.Resource.objects.create(
+        channel=channel,
+        episode=episode,
+        guid="test-resource-with-episode-001",
+        kind=models.ResourceKind.PDF.value,
+        title="Episode PDF Resource",
+        description="A PDF resource linked to an episode",
+        original_url="https://example.com/episode-notes.pdf",
+        local_path="test-channel/resources/episode-notes.pdf",
+        file_size_bytes=2048,
+        mime_type="application/pdf",
+        extracted=False,
+        embeddings=False,
+    )
+    return resource

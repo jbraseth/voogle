@@ -5,4 +5,5 @@
 from . import analytics as analytics
 from . import assistant as assistant
 from . import media as media
+from . import resource as resource
 from . import users as users

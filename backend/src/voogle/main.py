@@ -40,6 +40,7 @@ async def add_private_network_access_headers(
 app.include_router(routers.app.router)
 app.include_router(routers.users.router)
 app.include_router(routers.media.router)
+app.include_router(routers.resource.router)
 app.include_router(routers.analytics.router)
 app.include_router(routers.local.router)
 app.include_router(routers.assistant.router)

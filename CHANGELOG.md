@@ -8,6 +8,31 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 ## [Unreleased]
 
+### Added
+- **PDF ingestion staging - collect and link PDFs** (#41)
+  - New `Resource` model for non-audio artifacts (PDFs, documents, etc.)
+  - `backend/src/voogle/models/resource.py`: Resource model with `ResourceKind` enum
+  - Database migration: `a1b2c3d4e5f6_add_resources_table.py`
+  - Resources link to channels (required) and optionally to episodes
+  - Fields: `guid`, `kind`, `title`, `description`, `original_url`, `local_path`, `file_size_bytes`, `mime_type`, `extracted`, `embeddings`
+  - `backend/src/voogle/collection/feed.py`: PDF detection in RSS feeds
+    - `_is_resource_item()` detects PDF enclosures by MIME type
+    - `read_resources()` extracts ResourceData from feeds
+    - `read_episodes()` now skips PDF items (handled separately)
+  - `backend/src/voogle/collection/crawler.py`: Resource collection pipeline
+    - `update_channel_resources()` downloads PDFs and creates Resource records
+    - PDFs stored in `data/media/{channel-slug}/resources/` directory
+  - `backend/src/voogle/routers/resource.py`: Resources API
+    - `GET /media/resource`: List resources with filters (channel_id, episode_id, kind)
+    - `GET /media/resource/{id}`: Get single resource with download URL
+    - `DELETE /media/resource/{id}`: Delete resource
+  - `backend/src/voogle/routers/local.py`: PDF MIME type support
+  - Tests: Unit tests for feed module, integration tests for Resource API
+
+**WHY**: BibleProject Classroom sessions include Teacher Notes PDFs that contain valuable summaries and diagrams. Users need to see, download, and eventually search these PDFs alongside audio content.
+
+**REASONING**: New `Resource` table chosen over extending `Episode` because PDFs have different semantics (no duration, no transcription). Extensible design allows future resource types (slides, diagrams) without schema changes. PDFs downloaded locally to handle URL changes/404s. Extraction/embedding deferred to follow-up PR for clean separation.
+
 ### Fixed
 - **Local channel media URLs use correct path segment** (#39)
   - `channel_path()` and `channel_folder_name()` now use `local_folder` for local channels
