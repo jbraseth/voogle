@@ -8,6 +8,17 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 ## [Unreleased]
 
+### Fixed
+- **Local channel media URLs use correct path segment** (#39)
+  - `channel_path()` and `channel_folder_name()` now use `local_folder` for local channels
+  - Previously used slugified title+feed which produced malformed paths like `local-channel-`
+  - Local channels now correctly use their `local_folder` value for file storage and URL generation
+  - E2E tests for local channel playback now pass
+
+**WHY**: Local channel media URLs were returning 404 errors because the URL path didn't match where files were stored. This was revealed by #37 (E2E console error detection).
+
+**REASONING**: Local channels have empty `feed` values, so the slugified path was malformed. Using `local_folder` directly is the correct approach since that's where the source files originate and what users expect.
+
 ### Added
 - **Result Map Visualization with 2D Embedding Projection** (#32)
   - New `/media/query/visualize` endpoint returns 2D coordinates for search results

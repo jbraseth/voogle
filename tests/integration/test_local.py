@@ -131,9 +131,8 @@ def test_storage_helper_functions(
     channel_folder = storage.channel_folder_name(local_channel)
     episode_file = storage.episode_filename(local_episode)
 
-    # Channel folder name should be slugified and contain parts of title and feed
-    assert "-" in channel_folder
-    assert "local-test-channel" in channel_folder
+    # For local channels, folder name should match local_folder value
+    assert channel_folder == local_channel.local_folder
 
     # Episode filename should have .mp3 extension
     assert episode_file.endswith(".mp3")

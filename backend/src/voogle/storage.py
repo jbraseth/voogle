@@ -34,7 +34,13 @@ def vectordb_path() -> pathlib.Path:
 
 
 def channel_path(channel: media.Channel) -> pathlib.Path:
-    """Return the path where channel media files should be stored."""
+    """Return the path where channel media files should be stored.
+
+    For local channels, uses the local_folder value directly.
+    For podcast channels, uses a slugified combination of title and feed.
+    """
+    if channel.local_folder:
+        return settings.settings.media_folder / str(channel.local_folder)
     fname = f"{slugify(str(channel.title)[:30])}-{slugify(str(channel.feed)[-10:])}"
     return settings.settings.media_folder / fname
 
@@ -71,7 +77,13 @@ async def transcription_file(
 
 
 def channel_folder_name(channel: media.Channel) -> str:
-    """Return the folder name for a channel (without full path)."""
+    """Return the folder name for a channel (without full path).
+
+    For local channels, uses the local_folder value directly.
+    For podcast channels, uses a slugified combination of title and feed.
+    """
+    if channel.local_folder:
+        return str(channel.local_folder)
     return f"{slugify(str(channel.title)[:30])}-{slugify(str(channel.feed)[-10:])}"
 
 
