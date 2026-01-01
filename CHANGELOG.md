@@ -8,6 +8,21 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 ## [Unreleased]
 
+### Added
+- **GitHub Container Registry builds with manual trigger** (#43)
+  - New `.github/workflows/build-images.yml` workflow with `workflow_dispatch` trigger
+  - Builds `ghcr.io/jbraseth/voogle-backend:latest` from `backend/dockerfile`
+  - Builds `ghcr.io/jbraseth/voogle-ui:latest` from `frontend/dockerfile.prod`
+  - Version tagging via workflow input (e.g., `v1.0.0`, `latest`)
+  - SHA-based tags for every build (e.g., `sha-abc1234`)
+  - GitHub Actions cache for faster subsequent builds
+  - Updated `infra/production/compose.yml` to pull from ghcr.io by default
+  - Local build option preserved via commented-out build sections
+
+**WHY**: Enables pulling pre-built images instead of building locally, with no Docker Hub rate limits. Supports version tagging for releases and public sharing.
+
+**REASONING**: `workflow_dispatch` chosen over automatic triggers to maintain control over when images are published. ghcr.io offers native GitHub integration with automatic `GITHUB_TOKEN` auth and unlimited pulls for public packages.
+
 ### Fixed
 - **Local channel media URLs use correct path segment** (#39)
   - `channel_path()` and `channel_folder_name()` now use `local_folder` for local channels
