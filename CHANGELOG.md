@@ -8,6 +8,17 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 
 ## [Unreleased]
 
+### Added
+- **Test coverage for known issues and gaps** (#42)
+  - Regression tests for Streamlit `st.image()` empty image bug (previously fixed without tests)
+  - Management UI test coverage with mocked Streamlit for `podcasts_and_episodes()` function
+  - CLI command tests for `--check-metadata` and `--rebuild-embeddings` flags
+  - Dynamic E2E fixture IDs: replaced hardcoded episode/channel IDs (489, 3073) with API-fetched values
+
+**WHY**: Several bugs were fixed without regression tests, risking re-introduction during refactoring. E2E fixtures with hardcoded IDs failed in fresh Docker environments where those specific IDs didn't exist.
+
+**REASONING**: Tests for already-fixed bugs serve as "locks" preventing regression. Dynamic fixture IDs ensure E2E tests work in any environment with seeded data. CLI tests validate the argument parsing and mocked behavior without requiring a full database.
+
 ### Fixed
 - **Local channel media URLs use correct path segment** (#39)
   - `channel_path()` and `channel_folder_name()` now use `local_folder` for local channels
