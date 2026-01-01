@@ -10,10 +10,10 @@ Tests are organized by function:
 - emit_rss() - RSS feed generation
 """
 
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import xml.etree.ElementTree as ET
 
 import pytest
 

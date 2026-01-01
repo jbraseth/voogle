@@ -1,4 +1,8 @@
-name: voogle
+# Note: Project name is derived from parent directory (e.g., voogle-copy)
+# This enables parallel development with multiple repo copies
+#
+# Ports are auto-derived from directory name via ./infra/dev-up which
+# generates .env.ports. This file is gitignored so no merge conflicts.
 
 x-defaults: &defaults
   logging:
@@ -25,11 +29,11 @@ services:
     environment:
       - EMBEDDINGS_PROVIDER_OVERRIDE=local
     ports:
-      - ${VITE_API_PORT:?Run: eval \$(python ../../infra/dev-ports.py)}:80
+      - "${VITE_API_PORT:-8081}:80"
     command: uvicorn src.voogle.main:app --reload --reload-dir /backend/src --host 0.0.0.0 --port 80
     volumes:
-      - ../../backend/:/backend/
-      - ../../data/:/data/
+      - ../../backend/:/backend/:z
+      - ../../data/:/data/:z
     healthcheck:
       test: ["CMD", "curl", "-f", "0.0.0.0/app/version"]
       interval: 6s
@@ -43,7 +47,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - ${VOOGLE_FRONTEND_PORT:?Run: eval \$(python ../../infra/dev-ports.py)}:5173
+      - "${VOOGLE_FRONTEND_PORT:-8080}:5173"
     build:
       context: ../../frontend
       dockerfile: dockerfile.dev
@@ -56,8 +60,8 @@ services:
       # Backend target for Vite proxy (Docker service hostname)
       - VITE_BACKEND_TARGET=http://backend:80
     volumes:
-      - ../../frontend/src:/frontend/src
-      - ../../frontend/public:/frontend/public
+      - ../../frontend/src:/frontend/src:z
+      - ../../frontend/public:/frontend/public:z
     healthcheck:
       test: ["CMD", "curl", "-f", "0.0.0.0:5173"]
       interval: 6s
@@ -73,11 +77,11 @@ services:
     env_file:
       - .env
     ports:
-      - ${VOOGLE_MANAGEMENT_PORT:?Run: eval \$(python ../../infra/dev-ports.py)}:8501
+      - "${VOOGLE_MANAGEMENT_PORT:-8580}:8501"
     command: streamlit run src/voogle/management/🏠-Home.py
     volumes:
-      - ../../backend/:/backend/
-      - ../../data/:/data/
+      - ../../backend/:/backend/:z
+      - ../../data/:/data/:z
 
   redis:
     <<: *defaults
@@ -104,14 +108,14 @@ services:
       - .env
     command: python src/voogle/worker.py
     volumes:
-      - ../../backend/:/backend/
-      - ../../data/:/data/
+      - ../../backend/:/backend/:z
+      - ../../data/:/data/:z
 
   qdrant:
     <<: *defaults
     image: qdrant/qdrant:v1.12.5
     ports:
-      - ${VOOGLE_QDRANT_PORT:?Run: eval \$(python ../../infra/dev-ports.py)}:6333
+      - "${VOOGLE_QDRANT_PORT:-6333}:6333"
     volumes:
       - ../../data/qdrant/:/qdrant/storage
     stop_grace_period: 30s  # Give Qdrant time to flush data to disk on shutdown

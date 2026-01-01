@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
-
 from voogle.chunking import (
     DEFAULT_CONFIG,
     ChunkingConfig,
@@ -52,9 +51,9 @@ class TestChunkingConfig:
 
     @pytest.mark.description("Overlap >= chunk_size raises ValueError")
     def test_overlap_too_large(self) -> None:
-        with pytest.raises(ValueError, match="chunk_overlap_words .* must be < chunk_size_words"):
+        with pytest.raises(ValueError, match=r"chunk_overlap_words .* must be < chunk_size_words"):
             ChunkingConfig(chunk_size_words=40, chunk_overlap_words=40)
-        with pytest.raises(ValueError, match="chunk_overlap_words .* must be < chunk_size_words"):
+        with pytest.raises(ValueError, match=r"chunk_overlap_words .* must be < chunk_size_words"):
             ChunkingConfig(chunk_size_words=40, chunk_overlap_words=50)
 
     @pytest.mark.description("Invalid min_chunk_length_words raises ValueError")
@@ -65,7 +64,7 @@ class TestChunkingConfig:
     @pytest.mark.description("Config is immutable (frozen dataclass)")
     def test_immutable(self) -> None:
         config = ChunkingConfig()
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(AttributeError):  # dataclass FrozenInstanceError
             config.chunk_size_words = 100  # type: ignore[misc]
 
 

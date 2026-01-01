@@ -1,7 +1,7 @@
 #!/bin/bash
 # Start development environment with auto-derived ports.
 #
-# This script sources ports from dev-ports.py (based on project directory name)
+# This script sources ports from dev_ports.py (based on project directory name)
 # then runs docker-compose. This enables multiple repo copies to run in parallel.
 #
 # Usage:
@@ -11,19 +11,27 @@
 #   ./infra/dev-up logs -f   # View logs (any docker-compose command works)
 #
 # To see your assigned ports:
-#   python infra/dev-ports.py --show
+#   python infra/dev_ports.py --show
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Source port assignments
+# Generate .env.ports file with auto-derived ports
+# This file is gitignored and ensures compose reads the correct ports
+"$PROJECT_ROOT/infra/dev_ports.py" --env-file > "$PROJECT_ROOT/infra/development/.env.ports"
+
+# Source for display purposes
 eval "$("$PROJECT_ROOT/infra/dev_ports.py")"
 
-# Default to 'up' if no command given
-CMD="${1:-up}"
-shift 2>/dev/null || true
+# Default to 'up' if no command given, or if first arg is a flag
+if [ -z "$1" ] || [[ "$1" == -* ]]; then
+    CMD="up"
+else
+    CMD="$1"
+    shift
+fi
 
 # Show ports on startup for 'up' command
 if [ "$CMD" = "up" ]; then
@@ -36,4 +44,22 @@ if [ "$CMD" = "up" ]; then
 fi
 
 cd "$PROJECT_ROOT/infra/development"
-exec docker compose "$CMD" "$@"
+
+# For 'up' command, run migrations automatically after services start
+if [ "$CMD" = "up" ]; then
+    docker compose --env-file .env --env-file .env.ports "$CMD" "$@"
+
+    # Wait for backend to be healthy, then run migrations
+    echo ""
+    echo "Waiting for backend to be ready..."
+    timeout 90 bash -c 'while ! docker compose --env-file .env --env-file .env.ports exec -T backend curl -sf http://localhost:80/app/version >/dev/null 2>&1; do sleep 2; done' || {
+        echo "Warning: Backend not ready after 90s, skipping auto-migration"
+        exit 0
+    }
+
+    echo "Running database migrations..."
+    docker compose --env-file .env --env-file .env.ports exec -T -w /backend backend alembic upgrade head
+    echo "Done! Environment ready."
+else
+    exec docker compose --env-file .env --env-file .env.ports "$CMD" "$@"
+fi

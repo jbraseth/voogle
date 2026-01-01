@@ -35,3 +35,9 @@ def fixture_voogle_credentials(manifest_reader: ManifestReader) -> tuple[str, st
         manifest_reader.get_if_exists_in_manifest("admin_username"),
         manifest_reader.get_if_exists_in_manifest("admin_password"),
     )
+
+
+@pytest.fixture(scope="session", name="qdrant_port")
+def fixture_qdrant_port(manifest_reader: ManifestReader) -> int:
+    """Get Qdrant port from manifest (auto-derived from project directory)."""
+    return manifest_reader.get_if_exists_in_manifest("qdrant_port")

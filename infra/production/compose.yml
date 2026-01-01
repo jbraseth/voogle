@@ -26,7 +26,7 @@ services:
       - 80  # we do not want to publish this port, as we will access through traefik
     command:  uvicorn src.voogle.main:app --proxy-headers --host 0.0.0.0 --root-path /service --port 80
     volumes:
-      - ../../data-production/:/data/
+      - ../../data-production/:/data/:z
     labels:
       - "traefik.enable=true"
       # expose the backend in the /service endpoint
@@ -94,7 +94,7 @@ services:
       - "traefik.http.middlewares.management.stripprefix.prefixes=/management"
       - "traefik.port=80"
     volumes:
-      - ../../data-production/:/data/
+      - ../../data-production/:/data/:z
 
   redis:
     <<: *defaults
@@ -117,7 +117,7 @@ services:
       - .env
     command: python src/voogle/worker.py
     volumes:
-      - ../../data-production/:/data/
+      - ../../data-production/:/data/:z
     restart: unless-stopped
 
   qdrant:
@@ -126,7 +126,7 @@ services:
     expose:
       - 6333
     volumes:
-      - ../../data-production/qdrant/:/qdrant/storage
+      - ../../data-production/qdrant/:/qdrant/storage:z
 
 
   traefik:
@@ -136,9 +136,9 @@ services:
       - 80:80   # the app is served in this port
       - 443:443  # for https
     volumes:
-      - "./traefik.prod.toml:/etc/traefik/traefik.toml"
+      - "./traefik.prod.toml:/etc/traefik/traefik.toml:z"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./cert:/cert/"
+      - "./cert:/cert/:z"
     healthcheck:
       test: traefik healthcheck
       interval: 10s

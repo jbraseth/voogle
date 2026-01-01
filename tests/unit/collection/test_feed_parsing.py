@@ -12,9 +12,7 @@ from pathlib import Path
 
 import pytest
 import xmltodict
-
 from voogle.collection import feed
-
 
 pytestmark = pytest.mark.unit
 

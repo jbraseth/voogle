@@ -7,7 +7,7 @@ services:
       - ${VOOGLE_API_PORT:-81}:80
     command:  uvicorn src.voogle.main:app --reload --host 0.0.0.0 --port 80
     volumes:
-      - ./data/:/data/
+      - ./data/:/data/:z
     healthcheck:
       test: ["CMD", "curl", "-f", "0.0.0.0/app/version"]
       interval: 6s
@@ -36,7 +36,7 @@ services:
     entrypoint: ""
     command: streamlit run src/voogle/management/🏠-Home.py
     volumes:
-      - ./data/:/data/
+      - ./data/:/data/:z
 
   redis:
     image: redis:7.0.4-alpine
@@ -55,11 +55,11 @@ services:
     entrypoint: ""
     command: python src/voogle/worker.py
     volumes:
-      - ./data/:/data/
+      - ./data/:/data/:z
 
   qdrant:
     image: qdrant/qdrant:v1.12.5
     expose:
       - 6333
     volumes:
-      - ./data/qdrant/:/qdrant/storage
+      - ./data/qdrant/:/qdrant/storage:z

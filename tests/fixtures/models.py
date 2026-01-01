@@ -7,7 +7,6 @@
 import pathlib
 import shutil
 from datetime import datetime, timezone
-from typing import Any
 
 import pytest
 from voogle import embedding, models, storage, tasks, vector

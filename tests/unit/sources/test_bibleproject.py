@@ -12,12 +12,10 @@ Tests are organized by function:
 - BibleProjectAdapter - Full adapter workflow
 """
 
-from datetime import datetime, timezone
-from pathlib import Path
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
-
 from voogle.sources.bibleproject import (
     ArtifactType,
     BibleProjectAdapter,

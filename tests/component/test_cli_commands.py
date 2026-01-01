@@ -8,7 +8,7 @@ without requiring a full database or network access.
 """
 
 import argparse
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

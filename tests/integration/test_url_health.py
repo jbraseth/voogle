@@ -3,10 +3,9 @@
 
 """Integration tests for URL health checking and refresh logic."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 from voogle import models
 from voogle.collection import url_health
 from voogle.collection.url_health import URLStatus

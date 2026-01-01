@@ -5,6 +5,7 @@
 from collections.abc import Generator
 from unittest.mock import Mock, patch
 
+import numpy as np
 import pytest
 from voogle import embedding, models, storage, transcription, vector
 from voogle.chunking import ChunkingConfig
@@ -217,9 +218,6 @@ def test_get_embeddings_provider_by_name_invalid() -> None:
 
 
 # --- 2D Projection Tests ---
-
-
-import numpy as np
 
 
 @pytest.mark.description("Tests 2D projection with typical result set")

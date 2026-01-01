@@ -6,9 +6,7 @@
 from pathlib import Path
 
 import pytest
-
 from voogle.sources import ConfigurationError, LocalFeed
-
 
 pytestmark = pytest.mark.unit
 
@@ -35,7 +33,7 @@ class TestLocalFeedValidation:
         assert feed.exists() is True
 
     @pytest.mark.description("LocalFeed rejects relative paths")
-    def test_rejects_relative_path(self, tmp_path: Path) -> None:
+    def test_rejects_relative_path(self) -> None:
         """Relative paths should fail at boundary."""
         with pytest.raises(ConfigurationError, match="must be absolute"):
             LocalFeed(
@@ -109,7 +107,7 @@ class TestLocalFeedValidation:
             channel_url="local://youtube/test",
         )
 
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(AttributeError):  # dataclass FrozenInstanceError
             feed.source_id = "changed"  # type: ignore
 
 

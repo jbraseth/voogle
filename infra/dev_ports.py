@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3.12
 """
 Deterministic port assignment for parallel Voogle development.
 
@@ -31,7 +31,6 @@ Usage:
 """
 
 import hashlib
-import os
 import re
 import sys
 from pathlib import Path
@@ -55,12 +54,13 @@ class Ports(NamedTuple):
             "VOOGLE_QDRANT_PORT": str(self.qdrant),
         }
 
-    def to_manifest(self) -> dict[str, str]:
+    def to_manifest(self) -> dict[str, str | int]:
         """Return as manifest.json content for E2E tests."""
         return {
             "management_url": f"http://localhost:{self.management}",
             "frontend_url": f"http://localhost:{self.frontend}",
             "api_url": f"http://localhost:{self.api}",
+            "qdrant_port": self.qdrant,
             "admin_username": "voogle-admin",
             "admin_password": "*audio*search*engine",
         }
