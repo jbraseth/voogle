@@ -18,6 +18,32 @@ Format: **WHAT** changed, **WHY** it changed, and any **REASONING** behind decis
 **WHY**: Several bugs were fixed without regression tests, risking re-introduction during refactoring. E2E fixtures with hardcoded IDs failed in fresh Docker environments where those specific IDs didn't exist.
 
 **REASONING**: Tests for already-fixed bugs serve as "locks" preventing regression. Dynamic fixture IDs ensure E2E tests work in any environment with seeded data. CLI tests validate the argument parsing and mocked behavior without requiring a full database.
+### Changed
+- **Quick start compose now uses ghcr.io images** (#49)
+  - Updated `compose.quickstart.yml` to pull from `ghcr.io/jbraseth/voogle-backend:latest` and `ghcr.io/jbraseth/voogle-ui:latest`
+  - Replaced outdated `docker.io/unmonoqueteclea/voogle-backend:3.2.0` and `docker.io/unmonoqueteclea/voogle-ui:0.6.0`
+  - Frontend container port updated from 5173 (dev) to 80 (production nginx)
+  - Removed `--reload` flag from backend command (not needed for production images)
+  - Updated `readme.md` quick start section with correct commands and image references
+
+**WHY**: The old Docker Hub images from the archived Voilib project are stale (v3.2.0/v0.6.0) and missing 6+ months of bug fixes. New users following the README would get outdated software.
+
+**REASONING**: ghcr.io images are built from current main branch via #43 workflow. Public images require no authentication to pull. Using `latest` tag ensures users always get current code.
+
+### Added
+- **GitHub Container Registry builds with manual trigger** (#43)
+  - New `.github/workflows/build-images.yml` workflow with `workflow_dispatch` trigger
+  - Builds `ghcr.io/jbraseth/voogle-backend:latest` from `backend/dockerfile`
+  - Builds `ghcr.io/jbraseth/voogle-ui:latest` from `frontend/dockerfile.prod`
+  - Version tagging via workflow input (e.g., `v1.0.0`, `latest`)
+  - SHA-based tags for every build (e.g., `sha-abc1234`)
+  - GitHub Actions cache for faster subsequent builds
+  - Updated `infra/production/compose.yml` to pull from ghcr.io by default
+  - Local build option preserved via commented-out build sections
+
+**WHY**: Enables pulling pre-built images instead of building locally, with no Docker Hub rate limits. Supports version tagging for releases and public sharing.
+
+**REASONING**: `workflow_dispatch` chosen over automatic triggers to maintain control over when images are published. ghcr.io offers native GitHub integration with automatic `GITHUB_TOKEN` auth and unlimited pulls for public packages.
 
 ### Fixed
 - **Local channel media URLs use correct path segment** (#39)

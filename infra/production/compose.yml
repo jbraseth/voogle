@@ -11,12 +11,13 @@ x-defaults: &defaults
 services:
   backend:
     <<: *defaults
-    image: voogle-backend:latest
-    build:
-      context: ../../backend
-      dockerfile: dockerfile
-      args:
-        INSTALL_DEV: false
+    image: ghcr.io/jbraseth/voogle-backend:latest
+    # To build locally instead of pulling from ghcr.io, uncomment the build section:
+    # build:
+    #   context: ../../backend
+    #   dockerfile: dockerfile
+    #   args:
+    #     INSTALL_DEV: false
     depends_on:
       redis:
         condition: service_healthy
@@ -48,19 +49,20 @@ services:
 
   frontend:
     <<: *defaults
-    image: voogle-ui:latest
+    image: ghcr.io/jbraseth/voogle-ui:latest
     depends_on:
       backend:
         condition: service_healthy
     expose:
       - 80 # expose the port just internally, as we are using traefik
-    build:
-      context: ../../frontend
-      dockerfile: dockerfile.prod
-      args:
-        API_HOST: ${VITE_API_HOST:?err}
-        API_PORT: ${VITE_API_PORT:?err}
-        API_PREFIX: ${VITE_API_PREFIX:?err}
+    # To build locally instead of pulling from ghcr.io, uncomment the build section:
+    # build:
+    #   context: ../../frontend
+    #   dockerfile: dockerfile.prod
+    #   args:
+    #     API_HOST: ${VITE_API_HOST:?err}
+    #     API_PORT: ${VITE_API_PORT:?err}
+    #     API_PREFIX: ${VITE_API_PREFIX:?err}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ui.rule=(Host(`voogle.example.com`) && PathPrefix(`/`))"
