@@ -1,5 +1,5 @@
 <script>
-  import {AudioPlayer, isPlaying, PlayIcon} from 'svelte-mp3';
+  import MediaPlayer from './MediaPlayer.svelte';
   import WaveSpinner from './WaveSpinner.svelte'
   import {API_ORIGIN} from '../api.js'
 
@@ -8,10 +8,12 @@
   export let time;
   export let media_url;
 
-  let audio = {};
-  let isWaiting = false
+  let isWaiting = false;
+  let currentTime = 0;
+  let duration = 0;
+  let paused = true;
+  let playing = false;
 
-  // Rewrite /local/ URLs to use backend origin (needed for dev where ports differ)
   function resolveMediaUrl(url) {
     if (url && url.startsWith('/local/')) {
       return API_ORIGIN + url;
@@ -20,23 +22,14 @@
   }
 
   $: {
-    isWaiting = episode;
-    durationChanged(null)
+    isWaiting = !!episode;
   }
 
   $: edate = new Date(episode.date);
-  $: eurl = [resolveMediaUrl(media_url)];
+  $: resolvedUrl = resolveMediaUrl(media_url);
 
-
-  function canplay(event) {
-    isWaiting = false
-    isPlaying.set(true)
-  }
-  function durationChanged(event) {
-    localStorage.setItem('volume', 1)
-    isPlaying.set(false)
-    audio.currentTime = time;
-    isPlaying.set(true)
+  function handleCanPlay() {
+    isWaiting = false;
   }
 </script>
 <div class="card w-full h-80 sm:h-64 lg:h-40 bg-base-100 shadow-xl image-full" data-testid="audio-player-active">
@@ -58,21 +51,17 @@
       {#if isWaiting}
       <WaveSpinner size=80/>
       {/if}
-      <AudioPlayer
-	class="{ isWaiting ? 'invisible' : 'visible'}"
-	color="white"
-	showNext="{false}"
-	showPrev="{false}"
-	showShuffle="{false}"
-	showTrackNum="{false}"
-	disableVolSlider="{true}"
-	urls={eurl}
-	bind:audio={audio}
-	on:canplay={canplay}
-	on:canplaythrough={canplay}
-	on:durationchange={durationChanged}
-	data-testid="audio-element"
-	/>
+      <div class="{ isWaiting ? 'invisible' : 'visible'}">
+        <MediaPlayer
+          src={resolvedUrl}
+          startTime={time}
+          bind:currentTime
+          bind:duration
+          bind:paused
+          bind:playing
+          on:canplay={handleCanPlay}
+        />
+      </div>
     </div>
   </div>
 </div>
