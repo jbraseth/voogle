@@ -124,5 +124,23 @@ def import_channels_cmd(metadata: Path | None) -> None:
     click.echo("Import complete.")
 
 
+@main.command("import-transcripts")
+@click.option(
+    "--transcripts-dir",
+    "-t",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path("/home/hs-dev/projects/bibleproject-research/data/transcripts"),
+    help="Directory containing VTT transcripts organized by course",
+)
+def import_transcripts_cmd(transcripts_dir: Path) -> None:
+    """Import BibleProject VTT transcripts as CSV and link to episodes."""
+    import asyncio
+
+    from voogle.bibleproject.import_transcripts import import_all_transcripts
+
+    result = asyncio.run(import_all_transcripts(transcripts_dir))
+    click.echo(f"Imported {result.success_count} transcripts, {result.error_count} errors")
+
+
 if __name__ == "__main__":
     main()
