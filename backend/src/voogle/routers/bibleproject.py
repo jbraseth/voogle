@@ -111,12 +111,15 @@ def get_course(slug: str) -> bp_schemas.CourseDetail:
     sessions: list[bp_schemas.SessionSummary] = []
     slides_dir = course_dir / "slides"
     if slides_dir.exists():
-        for slide_file in sorted(slides_dir.glob("*.json")):
+        slide_files = list(slides_dir.glob("*.json"))
+        slide_files.sort(key=lambda f: int(f.stem) if f.stem.isdigit() else f.stem)
+        for slide_file in slide_files:
             session_id = slide_file.stem
             # Try to load slide file to get title/duration
             try:
                 slide_data = json.loads(slide_file.read_text(encoding="utf-8"))
-                title = slide_data.get("title", session_id)
+                # Try session_title first (production format), fall back to title (test format)
+                title = slide_data.get("session_title") or slide_data.get("title", session_id)
                 duration = slide_data.get("duration")
             except (json.JSONDecodeError, OSError):
                 title = session_id
