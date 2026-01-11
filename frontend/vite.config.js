@@ -13,6 +13,12 @@ export default defineConfig({
       preprocess: [sveltePreprocess({ postcss: true })],
     }),
   ],
+  build: {
+    rollupOptions: {
+      // External modules that are loaded at runtime (not bundled)
+      external: ['/bp/bp-slides.js', '/bp/bp-core.js'],
+    },
+  },
   server: {
     host: '0.0.0.0',
     proxy: {
