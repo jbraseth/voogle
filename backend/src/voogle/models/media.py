@@ -18,6 +18,7 @@ from voogle.models import base
 class ChannelKind(enum.Enum):
     podcast = "podcast"
     local = "local"
+    bibleproject = "bibleproject"
 
 
 class Language(enum.Enum):
@@ -38,7 +39,7 @@ class Channel(base.CoreModel):
 
     title = ormar.String(max_length=250)
     feed = ormar.String(max_length=250)
-    kind = ormar.String(max_length=10, choices=list(ChannelKind))
+    kind = ormar.String(max_length=20, choices=list(ChannelKind))
     language = ormar.String(max_length=3, choices=list(Language))
     description = ormar.Text()
     url = ormar.String(max_length=250)
@@ -78,3 +79,12 @@ class Episode(base.CoreModel):
     transcribed = ormar.Boolean(default=False)
     # whether embeddings are available for the episode
     embeddings = ormar.Boolean(default=False)
+    # Mux video playback ID (for BibleProject courses)
+    mux_playback_id = ormar.String(max_length=100, nullable=True)
+
+    @property
+    def stream_url(self) -> str | None:
+        """Get HLS stream URL from Mux playback ID."""
+        if self.mux_playback_id:
+            return f"https://stream.mux.com/{self.mux_playback_id}.m3u8"
+        return None
