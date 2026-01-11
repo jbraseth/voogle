@@ -128,6 +128,19 @@ async def get_episode_transcription(
     )
 
 
+@router.get(
+    "/episode/{episode_id}",
+    summary="Get a single episode by its id (public)",
+    response_model=media_schemas.EpisodeOut,
+)
+async def get_episode(
+    episode_id: uuid.UUID,
+) -> media_schemas.EpisodeOut:  # type: ignore[valid-type]
+    """Get episode details by UUID. Public endpoint for Content page."""
+    episode = await media.Episode.objects.get(id=episode_id)
+    return episode
+
+
 @router.delete("/episode/{episode_id}", summary="Delete an episode given its id")
 async def delete_episode(
     episode_id: uuid.UUID,
@@ -172,6 +185,10 @@ async def query(
                 similarity=r.score,
                 start=r.start_secs,
                 media_url=media_url,
+                # N1: Include episode info for slide-enabled playback
+                episode_id=str(episode.id),
+                stream_url=episode.stream_url,
+                channel_type=channel.kind,
             )
         )
     return output

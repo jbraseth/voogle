@@ -35,6 +35,14 @@
       media_url: result.media_url
     });
   }
+
+  // N1: Navigate to content page for slide-enabled playback
+  function viewWithSlides() {
+    const timestamp = Math.floor(result.start);
+    window.location.href = `/content/${result.episode_id}?t=${timestamp}`;
+  }
+
+  $: isBibleProject = result.channel_type === 'bibleproject';
 </script>
 
 <div class="flex flex-col card h-auto bg-base-100 shadow-lg py-5 px-5" data-testid="query-result-{result.channel.id}">
@@ -88,13 +96,23 @@
       {result.text}...
     </p>
   </div>
-  <button class="mt-4 btn btn-sm btn-outline" on:click={click} data-testid="play-button-{result.channel.id}">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      <path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />
-    </svg>
-    Play fragment
-  </button>
+  <div class="mt-4 flex gap-2">
+    <button class="btn btn-sm btn-outline" on:click={click} data-testid="play-button-{result.channel.id}">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />
+      </svg>
+      Play fragment
+    </button>
+    {#if isBibleProject}
+      <button class="btn btn-sm btn-primary" on:click={viewWithSlides} data-testid="slides-button-{result.channel.id}">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+        </svg>
+        View with slides
+      </button>
+    {/if}
+  </div>
 
 
 </div>

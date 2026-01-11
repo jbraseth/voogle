@@ -4,11 +4,13 @@
 
   export let streamUrl = '';        // HLS stream URL (from Episode.stream_url)
   export let slidesData = null;     // Slides array from API
+  export let startTime = 0;         // N1: Initial seek position in seconds
 
   let videoElement;
   let presentationElement;
   let currentTime = 0;
   let paused = true;
+  let hasSeekOnLoad = false;        // N1: Track if initial seek has been done
 
   // Format slides data for bp-slide-presentation
   // The component expects { presentationSlides: [...] } or array with config field
@@ -25,9 +27,25 @@
         const hls = new Hls();
         hls.loadSource(streamUrl);
         hls.attachMedia(videoElement);
+
+        // N1: Seek to startTime once video is loaded
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (startTime > 0 && !hasSeekOnLoad) {
+            videoElement.currentTime = startTime;
+            hasSeekOnLoad = true;
+          }
+        });
       } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
         // Native HLS support (Safari)
         videoElement.src = streamUrl;
+
+        // N1: Seek to startTime once video is loadedmetadata
+        videoElement.addEventListener('loadedmetadata', () => {
+          if (startTime > 0 && !hasSeekOnLoad) {
+            videoElement.currentTime = startTime;
+            hasSeekOnLoad = true;
+          }
+        }, { once: true });
       }
     }
 
