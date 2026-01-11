@@ -23,7 +23,6 @@ def bibleproject_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Pa
 
     monkeypatch.setattr(settings_module.settings, "repo_dir", tmp_path)
     # Force data_dir to return tmp_path for tests
-    original_data_dir = type(settings_module.settings).data_dir
     monkeypatch.setattr(
         type(settings_module.settings),
         "data_dir",
@@ -45,6 +44,11 @@ def sample_course(bibleproject_data_dir: Path) -> Path:
         "title": "Introduction to the Bible",
         "description": "An overview of the Bible's structure and themes",
         "source": "bibleproject",
+        "artwork_url": "https://cdn.example.com/intro-to-bible-artwork.jpg",
+        "colors": {
+            "primary": "#123456",
+            "secondary": "#654321",
+        },
     }
     (course_dir / "adapter_config.json").write_text(
         json.dumps(config), encoding="utf-8"
@@ -54,25 +58,42 @@ def sample_course(bibleproject_data_dir: Path) -> Path:
     slides_dir = course_dir / "slides"
     slides_dir.mkdir()
 
-    # Create session slides
+    # Create session slides in bp-slide-presentation format
     session1_slides = {
         "title": "Session 1: Overview",
         "duration": 3600.0,
         "slides": [
             {
-                "arc_id": "arc://image/001",
-                "text": "Welcome to the Bible",
+                "timestamp": 0,
+                "variant": "title",
+                "content": {
+                    "sessionName": "Overview",
+                    "className": "Intro to Bible",
+                },
+                "animations": [],
             },
             {
-                "image": {"arc_id": "arc://image/002"},
-                "text": "The Old Testament",
-            },
-            {
-                "assets": [
-                    {"arc_id": "arc://image/003"},
-                    {"arc_id": "arc://image/004"},
+                "timestamp": 60,
+                "variant": "image",
+                "content": {
+                    "image": {"arc_id": "arc://image/002"},
+                    "text": "The Old Testament",
+                },
+                "animations": [
+                    {"startTime": 65, "variant": "highlight", "stringValue": "text"},
                 ],
-                "text": "Multiple images",
+            },
+            {
+                "timestamp": 120,
+                "variant": "multi-image",
+                "content": {
+                    "assets": [
+                        {"arc_id": "arc://image/003"},
+                        {"arc_id": "arc://image/004"},
+                    ],
+                    "text": "Multiple images",
+                },
+                "animations": [],
             },
         ],
     }
@@ -83,7 +104,12 @@ def sample_course(bibleproject_data_dir: Path) -> Path:
     session2_slides = {
         "title": "Session 2: Genesis",
         "slides": [
-            {"text": "In the beginning..."},
+            {
+                "timestamp": 0,
+                "variant": "text",
+                "content": {"text": "In the beginning..."},
+                "animations": [],
+            },
         ],
     }
     (slides_dir / "session-2.json").write_text(
@@ -98,38 +124,28 @@ def sample_course(bibleproject_data_dir: Path) -> Path:
                 "asset_type": "image",
                 "src": "https://cdn.example.com/img001.jpg",
                 "alt": "Welcome image",
-                "caption": "Welcome to the course",
-                "title": "Welcome",
             },
             {
                 "arc_id": "arc://image/002",
                 "asset_type": "image",
                 "src": "https://cdn.example.com/img002.jpg",
-                "alt": "Old Testament",
-                "caption": "",
-                "title": "OT Overview",
+                "alt": "OT image",
             },
             {
                 "arc_id": "arc://image/003",
                 "asset_type": "image",
                 "src": "https://cdn.example.com/img003.jpg",
                 "alt": "Image 3",
-                "caption": "",
-                "title": "",
             },
             {
                 "arc_id": "arc://image/004",
                 "asset_type": "video",
                 "src": "https://cdn.example.com/vid004.mp4",
-                "alt": "",
-                "caption": "Video clip",
-                "title": "Video",
+                "alt": "Video 4",
             },
         ]
     }
-    (course_dir / "assets.json").write_text(
-        json.dumps(assets_data), encoding="utf-8"
-    )
+    (course_dir / "assets.json").write_text(json.dumps(assets_data), encoding="utf-8")
 
     return course_dir
 
@@ -137,9 +153,9 @@ def sample_course(bibleproject_data_dir: Path) -> Path:
 @pytest.fixture
 def api_client() -> TestClient:
     """Create a test client for the API."""
-    from voogle import main
+    from voogle.main import app
 
-    return TestClient(main.app)
+    return TestClient(app)
 
 
 class TestListCourses:
@@ -154,38 +170,41 @@ class TestListCourses:
         assert response.status_code == 200
         assert response.json() == []
 
-    @pytest.mark.description("Returns list of courses with metadata")
+    @pytest.mark.description("Returns course list with metadata")
     def test_list_courses(
         self, api_client: TestClient, sample_course: Path
     ) -> None:
         response = api_client.get("/bibleproject/courses")
 
         assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 1
-        assert data[0]["slug"] == "intro-to-bible"
-        assert data[0]["title"] == "Introduction to the Bible"
-        assert data[0]["session_count"] == 2
+        courses = response.json()
+        assert len(courses) == 1
+        assert courses[0]["slug"] == "intro-to-bible"
+        assert courses[0]["title"] == "Introduction to the Bible"
+        assert courses[0]["session_count"] == 2
 
-    @pytest.mark.description("Lists multiple courses sorted by name")
+    @pytest.mark.description("Returns multiple courses sorted")
     def test_multiple_courses(
         self, api_client: TestClient, bibleproject_data_dir: Path
     ) -> None:
-        # Create two courses
-        for slug, title in [("aaa-course", "AAA Course"), ("zzz-course", "ZZZ Course")]:
+        # Create additional course
+        for slug in ["abraham", "genesis"]:
             course_dir = bibleproject_data_dir / slug
             course_dir.mkdir()
             (course_dir / "adapter_config.json").write_text(
-                json.dumps({"title": title}), encoding="utf-8"
+                json.dumps({"title": slug.title()}), encoding="utf-8"
             )
+            slides_dir = course_dir / "slides"
+            slides_dir.mkdir()
 
         response = api_client.get("/bibleproject/courses")
 
         assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 2
-        assert data[0]["slug"] == "aaa-course"
-        assert data[1]["slug"] == "zzz-course"
+        courses = response.json()
+        assert len(courses) == 2
+        # Should be sorted alphabetically
+        assert courses[0]["slug"] == "abraham"
+        assert courses[1]["slug"] == "genesis"
 
 
 class TestGetCourse:
@@ -252,7 +271,7 @@ class TestGetSessionSlides:
         assert response.status_code == 404
         assert "session not found" in response.json()["detail"].lower()
 
-    @pytest.mark.description("Returns slides with total count")
+    @pytest.mark.description("Returns PresentationData with slides and theme")
     def test_slides_response_structure(
         self, api_client: TestClient, sample_course: Path
     ) -> None:
@@ -260,66 +279,79 @@ class TestGetSessionSlides:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["session_id"] == "session-1"
-        assert data["total_slides"] == 3
-        assert len(data["slides"]) == 3
+        # New format has presentationSlides and theme
+        assert "presentationSlides" in data
+        assert "theme" in data
+        assert len(data["presentationSlides"]) == 3
 
-    @pytest.mark.description("Resolves top-level arc_id to CDN URL")
-    def test_resolves_top_level_arc_id(
+    @pytest.mark.description("Returns theme with artwork URL from config")
+    def test_theme_artwork_from_config(
+        self, api_client: TestClient, sample_course: Path
+    ) -> None:
+        """Theme should use artwork_url from config, not derive from slug."""
+        response = api_client.get("/bibleproject/slides/intro-to-bible/session-1")
+
+        data = response.json()
+        theme = data["theme"]
+        assert theme["artwork"]["class"] == "https://cdn.example.com/intro-to-bible-artwork.jpg"
+        assert theme["artwork"]["module"] == "https://cdn.example.com/intro-to-bible-artwork.jpg"
+
+    @pytest.mark.description("Returns theme with colors from config")
+    def test_theme_colors_from_config(
         self, api_client: TestClient, sample_course: Path
     ) -> None:
         response = api_client.get("/bibleproject/slides/intro-to-bible/session-1")
 
         data = response.json()
-        slide = data["slides"][0]
+        color = data["theme"]["artwork"]["color"]
+        assert color["primary"] == "#123456"
+        assert color["secondary"] == "#654321"
 
-        assert slide["slide_index"] == 0
-        assert "arc://image/001" in slide["resolved_assets"]
-        asset = slide["resolved_assets"]["arc://image/001"]
-        assert asset["src"] == "https://cdn.example.com/img001.jpg"
-        assert asset["alt"] == "Welcome image"
-        assert asset["asset_type"] == "image"
-
-    @pytest.mark.description("Resolves nested image arc_id")
-    def test_resolves_nested_image(
+    @pytest.mark.description("Returns flattened slide structure")
+    def test_flattened_slide_structure(
         self, api_client: TestClient, sample_course: Path
     ) -> None:
         response = api_client.get("/bibleproject/slides/intro-to-bible/session-1")
 
         data = response.json()
-        slide = data["slides"][1]
+        slide = data["presentationSlides"][0]
 
-        assert "arc://image/002" in slide["resolved_assets"]
-        asset = slide["resolved_assets"]["arc://image/002"]
-        assert asset["src"] == "https://cdn.example.com/img002.jpg"
+        # Slide structure should be flattened
+        assert slide["startTime"] == 0
+        assert slide["slide"]["variant"] == "title"
+        assert slide["slide"]["sessionName"] == "Overview"
+        assert slide["slide"]["className"] == "Intro to Bible"
+        assert slide["animations"] == []
 
-    @pytest.mark.description("Resolves assets array")
-    def test_resolves_assets_array(
+    @pytest.mark.description("Returns slide with animations")
+    def test_slide_with_animations(
         self, api_client: TestClient, sample_course: Path
     ) -> None:
         response = api_client.get("/bibleproject/slides/intro-to-bible/session-1")
 
         data = response.json()
-        slide = data["slides"][2]
+        slide = data["presentationSlides"][1]
 
-        assert "arc://image/003" in slide["resolved_assets"]
-        assert "arc://image/004" in slide["resolved_assets"]
-        assert slide["resolved_assets"]["arc://image/003"]["asset_type"] == "image"
-        assert slide["resolved_assets"]["arc://image/004"]["asset_type"] == "video"
-        assert slide["resolved_assets"]["arc://image/004"]["src"] == "https://cdn.example.com/vid004.mp4"
+        assert slide["startTime"] == 60
+        assert len(slide["animations"]) == 1
+        assert slide["animations"][0]["startTime"] == 65
+        assert slide["animations"][0]["variant"] == "highlight"
+        assert slide["animations"][0]["stringValue"] == "text"
 
-    @pytest.mark.description("Handles slides without assets")
-    def test_slides_without_assets(
+    @pytest.mark.description("Includes nested image reference in slide content")
+    def test_includes_image_in_content(
         self, api_client: TestClient, sample_course: Path
     ) -> None:
-        response = api_client.get("/bibleproject/slides/intro-to-bible/session-2")
+        response = api_client.get("/bibleproject/slides/intro-to-bible/session-1")
 
-        assert response.status_code == 200
         data = response.json()
-        assert data["total_slides"] == 1
-        slide = data["slides"][0]
-        assert slide["resolved_assets"] == {}
-        assert slide["content"]["text"] == "In the beginning..."
+        slide = data["presentationSlides"][1]
+
+        # The image object should be present in the flattened slide content
+        assert "image" in slide["slide"]
+        image = slide["slide"]["image"]
+        # arc_id is preserved in content (asset resolution is separate)
+        assert "arc_id" in image
 
     @pytest.mark.description("Works without assets.json file")
     def test_no_assets_manifest(
@@ -332,7 +364,30 @@ class TestGetSessionSlides:
 
         assert response.status_code == 200
         data = response.json()
-        # Should still work but with no resolved assets
-        assert data["total_slides"] == 3
-        # Arc IDs should not be resolved since manifest is missing
-        assert data["slides"][0]["resolved_assets"] == {}
+        # Should still work but arc_ids won't be resolved
+        assert len(data["presentationSlides"]) == 3
+
+    @pytest.mark.description("Uses default theme colors when not in config")
+    def test_default_theme_colors(
+        self, api_client: TestClient, bibleproject_data_dir: Path
+    ) -> None:
+        # Create course without colors in config
+        course_dir = bibleproject_data_dir / "minimal"
+        course_dir.mkdir()
+        (course_dir / "adapter_config.json").write_text(
+            json.dumps({"title": "Minimal"}), encoding="utf-8"
+        )
+        slides_dir = course_dir / "slides"
+        slides_dir.mkdir()
+        (slides_dir / "1.json").write_text(
+            json.dumps({"slides": [{"variant": "title", "content": {}}]}),
+            encoding="utf-8"
+        )
+
+        response = api_client.get("/bibleproject/slides/minimal/1")
+
+        assert response.status_code == 200
+        color = response.json()["theme"]["artwork"]["color"]
+        # Default colors
+        assert color["primary"] == "#104366"
+        assert color["secondary"] == "#e24213"
