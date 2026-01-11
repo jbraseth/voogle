@@ -12,6 +12,9 @@
   let episode = null;
   let slidesData = null;
 
+  // S4: Read start time from URL query parameter (?t=seconds)
+  let startTime = 0;
+
   async function fetchSession() {
     if (!course || !sessionId) return;
 
@@ -44,6 +47,10 @@
     : null;
 
   onMount(() => {
+    // S4: Parse start time from URL query param
+    const urlParams = new URLSearchParams(window.location.search);
+    startTime = parseInt(urlParams.get('t') || '0', 10);
+
     fetchSession();
   });
 </script>
@@ -79,7 +86,7 @@
         <BibleProjectPlayer
           {streamUrl}
           {slidesData}
-          startTime={0}
+          {startTime}
         />
       {:else if streamUrl}
         <div class="video-container rounded-lg overflow-hidden bg-black">

@@ -36,8 +36,21 @@
     });
   }
 
-  // N1: Navigate to content page for slide-enabled playback
+  // S4: Navigate to BibleProject session player with slides at correct timestamp
   function viewWithSlides() {
+    // Parse guid format: bibleproject:{course}:{session}:{artifact_type} or bibleproject:{course}:{session}
+    const guid = result.episode?.guid;
+    if (guid && guid.startsWith('bibleproject:')) {
+      const parts = guid.split(':');
+      if (parts.length >= 3) {
+        const course = parts[1];
+        const sessionId = parts[2];
+        const timestamp = Math.floor(result.start);
+        window.location.href = `/session/${course}/${sessionId}?t=${timestamp}`;
+        return;
+      }
+    }
+    // Fallback to content page if guid parsing fails
     const timestamp = Math.floor(result.start);
     window.location.href = `/content/${result.episode_id}?t=${timestamp}`;
   }
@@ -63,6 +76,9 @@
 	{/if}
 	{#if isLocal}
 	  <span class="badge badge-sm badge-info" data-testid="local-badge">LOCAL</span>
+	{/if}
+	{#if isBibleProject}
+	  <span class="badge badge-sm badge-primary" data-testid="bibleproject-badge">BibleProject</span>
 	{/if}
       </p>
       <div class="flex flex-row">
