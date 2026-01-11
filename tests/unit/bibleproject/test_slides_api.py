@@ -60,7 +60,7 @@ def sample_course(bibleproject_data_dir: Path) -> Path:
 
     # Create session slides in bp-slide-presentation format
     session1_slides = {
-        "session_title": "Session 1: Overview",
+        "title": "Session 1: Overview",
         "duration": 3600.0,
         "slides": [
             {
@@ -102,7 +102,7 @@ def sample_course(bibleproject_data_dir: Path) -> Path:
     )
 
     session2_slides = {
-        "session_title": "Session 2: Genesis",
+        "title": "Session 2: Genesis",
         "slides": [
             {
                 "timestamp": 0,

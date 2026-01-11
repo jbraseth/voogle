@@ -184,7 +184,8 @@ def get_course(slug: str) -> bp_schemas.CourseDetail:
             # Try to load slide file to get title/duration
             try:
                 slide_data = json.loads(slide_file.read_text(encoding="utf-8"))
-                title = slide_data.get("session_title", session_id)
+                # Try session_title first (production format), fall back to title (test format)
+                title = slide_data.get("session_title") or slide_data.get("title", session_id)
                 duration = slide_data.get("duration")
             except (json.JSONDecodeError, OSError):
                 title = session_id
