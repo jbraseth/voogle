@@ -18,7 +18,7 @@ SQLAlchemy==1.4.54
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 cryptography==44.0.0
-bcrypt==4.2.1
+bcrypt==4.0.1  # 4.1+ removed __about__ which passlib 1.7.4 needs
 
 # Task queue
 redis==5.2.1
