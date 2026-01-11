@@ -13,7 +13,9 @@ from pathlib import Path
 import fastapi
 
 from voogle.bibleproject import assets
+from voogle.models import media
 from voogle.schemas import bibleproject as bp_schemas
+from voogle.schemas import media as media_schemas
 from voogle.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -252,3 +254,28 @@ def get_session_slides(course_slug: str, session_id: str) -> bp_schemas.Presenta
         )
 
     return bp_schemas.PresentationData(presentationSlides=presentation_slides)
+
+
+@router.get(
+    "/episodes/{course_slug}/{session_id}",
+    summary="Get episode info for a session",
+    response_model=media_schemas.EpisodeOut,
+)
+async def get_session_episode(
+    course_slug: str, session_id: str
+) -> media_schemas.EpisodeOut:  # type: ignore[valid-type]
+    """Get episode information for a BibleProject session.
+
+    Looks up the episode by its guid which follows the format:
+    bibleproject:{course_slug}:{session_id}
+    """
+    guid = f"bibleproject:{course_slug}:{session_id}"
+
+    try:
+        episode = await media.Episode.objects.get(guid=guid)
+        return episode
+    except Exception:
+        raise fastapi.HTTPException(
+            status_code=404,
+            detail=f"Episode not found for session: {course_slug}/{session_id}",
+        )
