@@ -43,5 +43,6 @@ app.include_router(routers.media.router)
 app.include_router(routers.analytics.router)
 app.include_router(routers.local.router)
 app.include_router(routers.assistant.router)
+app.include_router(routers.bibleproject.router)
 
 add_pagination(app)
