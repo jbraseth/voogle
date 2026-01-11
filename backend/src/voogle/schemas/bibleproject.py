@@ -56,3 +56,33 @@ class SessionSlides(BaseModel):
     session_id: str
     total_slides: int
     slides: list[Slide]
+
+
+class SlideAnimation(BaseModel):
+    """Animation to apply to a slide at a specific time."""
+
+    startTime: str | int  # "MM:SS" format or seconds
+    variant: str
+    stringValue: str | None = None
+    extraArg: str | None = None
+
+
+class SlideContent(BaseModel):
+    """The slide content with variant and data."""
+
+    variant: str
+    content: dict
+
+
+class PresentationSlide(BaseModel):
+    """A slide in the format expected by bp-slide-presentation."""
+
+    startTime: int  # timestamp in seconds
+    slide: SlideContent
+    animations: list[SlideAnimation] = []
+
+
+class PresentationData(BaseModel):
+    """Data format expected by bp-slide-presentation web component."""
+
+    presentationSlides: list[PresentationSlide]

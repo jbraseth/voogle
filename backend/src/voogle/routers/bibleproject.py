@@ -136,13 +136,12 @@ def get_course(slug: str) -> bp_schemas.CourseDetail:
     )
 
 
-@router.get(
-    "/slides/{course_slug}/{session_id}",
-    summary="Get slides for a session",
-    response_model=bp_schemas.SessionSlides,
-)
-def get_session_slides(course_slug: str, session_id: str) -> bp_schemas.SessionSlides:
-    """Get all slides for a session with resolved asset URLs."""
+def _load_slides_data(course_slug: str, session_id: str) -> tuple[dict, dict]:
+    """Load slides data and assets manifest for a session.
+
+    Returns:
+        Tuple of (slides_data dict, assets manifest dict)
+    """
     bp_dir = _get_bibleproject_dir()
     course_dir = bp_dir / course_slug
 
@@ -175,68 +174,81 @@ def get_session_slides(course_slug: str, session_id: str) -> bp_schemas.SessionS
         except (ValueError, OSError) as e:
             logger.warning(f"Failed to load assets manifest: {e}")
 
+    return slides_data, manifest
+
+
+@router.get(
+    "/slides/{course_slug}/{session_id}",
+    summary="Get slides for a session",
+    response_model=bp_schemas.PresentationData,
+)
+def get_session_slides(course_slug: str, session_id: str) -> bp_schemas.PresentationData:
+    """Get slides in the format expected by bp-slide-presentation web component.
+
+    Returns data structured as:
+    {
+      "presentationSlides": [
+        {
+          "startTime": 0,  // timestamp in seconds
+          "slide": { "variant": "title", "content": { ... } },
+          "animations": [...]
+        }
+      ]
+    }
+    """
+    slides_data, manifest = _load_slides_data(course_slug, session_id)
+
     # Get slides list from data
     slides_list = slides_data.get("slides", [])
     if not isinstance(slides_list, list):
         slides_list = []
 
-    # Process each slide
-    processed_slides: list[bp_schemas.Slide] = []
-    for idx, raw_slide in enumerate(slides_list):
+    # Process each slide into bp-slide-presentation format
+    presentation_slides: list[bp_schemas.PresentationSlide] = []
+    for raw_slide in slides_list:
         if not isinstance(raw_slide, dict):
             continue
 
         # Resolve assets in the slide
         resolved_slide = assets.resolve_slide_assets(raw_slide, manifest)
 
-        # Collect all resolved assets into a dict
-        resolved_assets: dict[str, bp_schemas.ResolvedAsset] = {}
+        # Extract variant and content
+        variant = resolved_slide.get("variant", "")
+        content = resolved_slide.get("content", {})
 
-        # From top-level resolved_asset
-        if "resolved_asset" in resolved_slide and "arc_id" in raw_slide:
-            asset_data = resolved_slide["resolved_asset"]
-            resolved_assets[raw_slide["arc_id"]] = bp_schemas.ResolvedAsset(
-                src=asset_data.get("src", ""),
-                alt=asset_data.get("alt", ""),
-                caption=asset_data.get("caption", ""),
-                title=asset_data.get("title", ""),
-                asset_type=asset_data.get("asset_type", "unknown"),
-            )
+        # Get timestamp (convert to int seconds)
+        timestamp = raw_slide.get("timestamp", 0)
+        if isinstance(timestamp, str):
+            # Handle "MM:SS" format if present
+            parts = timestamp.split(":")
+            if len(parts) == 2:
+                timestamp = int(parts[0]) * 60 + int(parts[1])
+            else:
+                timestamp = int(timestamp)
 
-        # From nested image
-        if "image" in resolved_slide and isinstance(resolved_slide["image"], dict):
-            image = resolved_slide["image"]
-            if "arc_id" in image and "src" in image:
-                resolved_assets[image["arc_id"]] = bp_schemas.ResolvedAsset(
-                    src=image.get("src", ""),
-                    alt=image.get("alt", ""),
-                    caption=image.get("caption", ""),
-                    title=image.get("title", ""),
-                    asset_type=image.get("asset_type", "image"),
+        # Process animations - keep original format as bp-slide-presentation expects
+        raw_animations = raw_slide.get("animations", [])
+        animations: list[bp_schemas.SlideAnimation] = []
+        for anim in raw_animations:
+            if isinstance(anim, dict):
+                animations.append(
+                    bp_schemas.SlideAnimation(
+                        startTime=anim.get("startTime", 0),
+                        variant=anim.get("variant", ""),
+                        stringValue=anim.get("stringValue"),
+                        extraArg=anim.get("extraArg"),
+                    )
                 )
 
-        # From assets array
-        if "assets" in resolved_slide and isinstance(resolved_slide["assets"], list):
-            for asset_item in resolved_slide["assets"]:
-                if isinstance(asset_item, dict) and "arc_id" in asset_item and "src" in asset_item:
-                    resolved_assets[asset_item["arc_id"]] = bp_schemas.ResolvedAsset(
-                        src=asset_item.get("src", ""),
-                        alt=asset_item.get("alt", ""),
-                        caption=asset_item.get("caption", ""),
-                        title=asset_item.get("title", ""),
-                        asset_type=asset_item.get("asset_type", "unknown"),
-                    )
-
-        processed_slides.append(
-            bp_schemas.Slide(
-                slide_index=idx,
-                content=resolved_slide,
-                resolved_assets=resolved_assets,
+        presentation_slides.append(
+            bp_schemas.PresentationSlide(
+                startTime=timestamp,
+                slide=bp_schemas.SlideContent(
+                    variant=variant,
+                    content=content,
+                ),
+                animations=animations,
             )
         )
 
-    return bp_schemas.SessionSlides(
-        session_id=session_id,
-        total_slides=len(processed_slides),
-        slides=processed_slides,
-    )
+    return bp_schemas.PresentationData(presentationSlides=presentation_slides)
