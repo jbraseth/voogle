@@ -22,12 +22,12 @@ router = fastapi.APIRouter(prefix="/bibleproject", tags=["bibleproject"])
 
 def _get_bibleproject_dir() -> Path:
     """Get the BibleProject data directory."""
-    return settings.data_dir / "bibleproject"
+    return settings.data_dir / "local" / "bibleproject"
 
 
 def _load_course_config(course_dir: Path) -> dict | None:
-    """Load adapter_config.json from a course directory."""
-    config_file = course_dir / "adapter_config.json"
+    """Load config.json from a course directory."""
+    config_file = course_dir / "config.json"
     if not config_file.exists():
         return None
     try:
@@ -166,8 +166,8 @@ def get_session_slides(course_slug: str, session_id: str) -> bp_schemas.SessionS
             status_code=500, detail=f"Failed to load slides: {e}"
         ) from e
 
-    # Load assets manifest
-    assets_file = course_dir / "assets.json"
+    # Load assets manifest (stored at bibleproject root level)
+    assets_file = _get_bibleproject_dir() / "assets.json"
     manifest: dict[str, assets.AssetInfo] = {}
     if assets_file.exists():
         try:

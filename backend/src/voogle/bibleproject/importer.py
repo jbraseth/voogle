@@ -43,15 +43,14 @@ class ImportResult:
 def import_course(course_slug: str, source_dir: Path, target_dir: Path) -> ImportResult:
     """Import a single course from source to target directory.
 
-    Steps:
-    1. Read metadata JSONs from source
-    2. Generate adapter config
-    3. Convert VTT files to CSV
-    4. Copy slides
-    5. Copy assets.json
+    Handles the research data structure:
+      source_dir/metadata/{course}/     -> session JSONs
+      source_dir/transcripts/{course}/  -> VTT files
+      source_dir/slides/{course}/       -> slide JSONs
+      source_dir/assets/assets.json     -> global assets manifest
 
     Args:
-        course_slug: Identifier for the course (e.g., "intro-to-bible")
+        course_slug: Identifier for the course (e.g., "abraham")
         source_dir: Path to the source research data directory
         target_dir: Path to the target Voogle data directory
 
@@ -59,39 +58,51 @@ def import_course(course_slug: str, source_dir: Path, target_dir: Path) -> Impor
         ImportResult with details about what was imported
     """
     result = ImportResult(course_slug=course_slug, success=False)
-    course_source = source_dir / course_slug
-    course_target = target_dir / course_slug
 
-    if not course_source.exists():
-        result.errors.append(f"Source directory not found: {course_source}")
+    # Research data structure paths
+    metadata_dir = source_dir / "metadata" / course_slug
+    transcripts_dir = source_dir / "transcripts" / course_slug
+    slides_dir = source_dir / "slides" / course_slug
+    assets_file = source_dir / "assets" / "assets.json"
+
+    # Check if course exists in any of the expected locations
+    if not any([metadata_dir.exists(), transcripts_dir.exists(), slides_dir.exists()]):
+        result.errors.append(f"Course not found in source: {course_slug}")
         return result
 
-    # Create target directory
+    # Target directory for this course
+    course_target = target_dir / "local" / "bibleproject" / course_slug
     course_target.mkdir(parents=True, exist_ok=True)
 
-    # Step 1 & 2: Read metadata and generate adapter config
-    metadata_file = course_source / "metadata.json"
-    if metadata_file.exists():
-        try:
-            metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
-            # Write adapter config to target
-            adapter_config = {
-                "course_slug": course_slug,
-                "title": metadata.get("title", course_slug),
-                "description": metadata.get("description", ""),
-                "source": "bibleproject",
-            }
-            config_path = course_target / "adapter_config.json"
-            config_path.write_text(json.dumps(adapter_config, indent=2), encoding="utf-8")
-        except (json.JSONDecodeError, OSError) as e:
-            result.errors.append(f"Failed to process metadata: {e}")
+    # Step 1: Read metadata JSONs and generate adapter config
+    if metadata_dir.exists():
+        sessions = []
+        for meta_file in sorted(metadata_dir.glob("*.json")):
+            try:
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                sessions.append({
+                    "session_id": meta_file.stem,
+                    "session_title": meta.get("session_title", meta_file.stem),
+                    "mux_id": meta.get("mux_playback_ids", [None])[0],
+                    "pdf_url": meta.get("pdf_url"),
+                })
+            except (json.JSONDecodeError, OSError) as e:
+                result.errors.append(f"Failed to read {meta_file.name}: {e}")
 
-    # Step 3: Convert VTT files to CSV
-    vtt_dir = course_source / "transcripts"
-    if vtt_dir.exists():
+        # Write adapter config
+        adapter_config = {
+            "course_slug": course_slug,
+            "course_title": course_slug.replace("-", " ").title(),
+            "sessions": sessions,
+        }
+        config_path = course_target / "config.json"
+        config_path.write_text(json.dumps(adapter_config, indent=2), encoding="utf-8")
+
+    # Step 2: Convert VTT files to CSV
+    if transcripts_dir.exists():
         csv_dir = course_target / "transcripts"
         csv_dir.mkdir(parents=True, exist_ok=True)
-        for vtt_file in vtt_dir.glob("*.vtt"):
+        for vtt_file in sorted(transcripts_dir.glob("*.vtt")):
             csv_file = csv_dir / (vtt_file.stem + ".csv")
             try:
                 convert_vtt_to_csv(vtt_file, csv_file)
@@ -99,24 +110,23 @@ def import_course(course_slug: str, source_dir: Path, target_dir: Path) -> Impor
             except (ValueError, OSError) as e:
                 result.errors.append(f"Failed to convert {vtt_file.name}: {e}")
 
-    # Step 4: Copy slides
-    slides_dir = course_source / "slides"
+    # Step 3: Copy slides
     if slides_dir.exists():
         target_slides_dir = course_target / "slides"
         target_slides_dir.mkdir(parents=True, exist_ok=True)
-        for slide_file in slides_dir.iterdir():
-            if slide_file.is_file():
-                try:
-                    shutil.copy2(slide_file, target_slides_dir / slide_file.name)
-                    result.slides_copied += 1
-                except OSError as e:
-                    result.errors.append(f"Failed to copy slide {slide_file.name}: {e}")
+        for slide_file in sorted(slides_dir.glob("*.json")):
+            try:
+                shutil.copy2(slide_file, target_slides_dir / slide_file.name)
+                result.slides_copied += 1
+            except OSError as e:
+                result.errors.append(f"Failed to copy slide {slide_file.name}: {e}")
 
-    # Step 5: Copy assets.json
-    assets_file = course_source / "assets.json"
-    if assets_file.exists():
+    # Step 4: Copy global assets.json (once per import, to bibleproject root)
+    bp_root = target_dir / "local" / "bibleproject"
+    target_assets = bp_root / "assets.json"
+    if assets_file.exists() and not target_assets.exists():
         try:
-            shutil.copy2(assets_file, course_target / "assets.json")
+            shutil.copy2(assets_file, target_assets)
             result.assets_copied = True
         except OSError as e:
             result.errors.append(f"Failed to copy assets.json: {e}")
@@ -128,10 +138,10 @@ def import_course(course_slug: str, source_dir: Path, target_dir: Path) -> Impor
 def import_all_courses(source_dir: Path, target_dir: Path) -> list[ImportResult]:
     """Import all courses from a source directory.
 
-    Discovers all course directories in source_dir and imports each one.
+    Discovers courses from the metadata/ subdirectory structure.
 
     Args:
-        source_dir: Path to the source research data directory containing course subdirectories
+        source_dir: Path to the source research data directory
         target_dir: Path to the target Voogle data directory
 
     Returns:
@@ -142,18 +152,13 @@ def import_all_courses(source_dir: Path, target_dir: Path) -> list[ImportResult]
     if not source_dir.exists():
         return results
 
-    # Find all course directories (directories that contain either metadata.json or transcripts/)
-    for item in sorted(source_dir.iterdir()):
-        if not item.is_dir():
-            continue
+    # Find all course slugs from metadata directory
+    metadata_root = source_dir / "metadata"
+    if not metadata_root.exists():
+        return results
 
-        # Check if this looks like a course directory
-        has_metadata = (item / "metadata.json").exists()
-        has_transcripts = (item / "transcripts").exists()
-        has_slides = (item / "slides").exists()
-        has_assets = (item / "assets.json").exists()
-
-        if has_metadata or has_transcripts or has_slides or has_assets:
+    for item in sorted(metadata_root.iterdir()):
+        if item.is_dir():
             result = import_course(item.name, source_dir, target_dir)
             results.append(result)
 
