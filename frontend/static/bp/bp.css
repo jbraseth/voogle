@@ -1,0 +1,93 @@
+/* BibleProject Web Components - Main CSS
+ * Source: https://static.bibleproject.com/bp-web-components/v0.24.0/bp.css
+ * Fonts available at: https://static.bibleproject.com/bp-web-components/v0.24.0/fonts/
+ */
+
+@import "./theme.css";
+
+@font-face {
+  font-family: "Graphik Web";
+  src: url("fonts/Graphik-Italic-VF-Web.woff2") format("woff2-variations");
+  font-style: italic;
+  font-stretch: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Graphik Web";
+  src: url("fonts/Graphik-Upright-VF-Web.woff2") format("woff2-variations");
+  font-style: normal;
+  font-stretch: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SBL Hebrew";
+  src: url("fonts/SBL-Hebrew.ttf") format("truetype");
+  font-style: normal;
+  font-stretch: normal;
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SBL Greek";
+  src: url("fonts/SBL-Greek.ttf") format("truetype");
+  font-style: normal;
+  font-stretch: normal;
+  font-weight: normal;
+  font-display: swap;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html:focus-within {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  text-rendering: optimizeSpeed;
+  font-family: var(--font-sans);
+}
+
+:is(a, button, input, textarea, select):focus-visible {
+  outline: var(--a11y-outline);
+}
+
+:is(a, button, input, textarea, select):focus:not(:focus-visible) {
+  outline: none;
+}
+
+:is(bp-global-header, bp-global-footer):not(:defined) {
+  display: block;
+  visibility: hidden;
+}
+
+bp-global-header:not(:defined) {
+  height: var(--size-6);
+}
+
+bp-global-footer:not(:defined) {
+  height: var(--size-60);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
