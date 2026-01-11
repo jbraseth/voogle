@@ -38,6 +38,10 @@ class QueryResponse(BaseModel):
     channel: Optional["ChannelOut"]  # type: ignore[misc]
     start: float
     media_url: str
+    # N1: Fields for slide-enabled playback navigation
+    episode_id: Optional[str] = None
+    stream_url: Optional[str] = None
+    channel_type: Optional[str] = None
 
 
 class VisualizationPoint(BaseModel):

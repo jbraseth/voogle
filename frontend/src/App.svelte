@@ -1,6 +1,6 @@
 <script>
   import router from "page"
-  import {routes, parseqs, getPageNum} from "./routes.js";
+  import {routes, parseqs, getPageNum, getEpisodeIdFromPath} from "./routes.js";
   import PageHeader from './lib/PageHeader.svelte'
   import PageFooter from './lib/PageFooter.svelte'
 
@@ -8,6 +8,7 @@
   let pagenum = -1;
   let page;
   let qs;
+  let episodeId = null;
 
   router('*', parseqs)
   routes.forEach(route => {
@@ -16,6 +17,8 @@
       (ctx, next) => {
 	pagenum = getPageNum(ctx.pathname);
 	qs = ctx.qs;
+	// N1: Extract episodeId from path for content routes
+	episodeId = getEpisodeIdFromPath(ctx.pathname);
 	next();
       },
       () => {page = route.component;}
@@ -26,6 +29,6 @@
 
 <div class="flex flex-col min-h-screen">
   <PageHeader selected={pagenum} />
-  <svelte:component this={page} qs={qs}/>
+  <svelte:component this={page} qs={qs} {episodeId}/>
   <PageFooter/>
 </div>
