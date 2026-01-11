@@ -106,5 +106,23 @@ def list_cmd(target: Path) -> None:
         click.echo(f"  - {course}")
 
 
+@main.command("import-channels")
+@click.option(
+    "--metadata",
+    "-m",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Path to metadata directory (defaults to research repo location)",
+)
+def import_channels_cmd(metadata: Path | None) -> None:
+    """Import BibleProject courses as Channels with Episodes in the database."""
+    import asyncio
+
+    from voogle.bibleproject.import_channels import import_bibleproject_data
+
+    asyncio.run(import_bibleproject_data(metadata))
+    click.echo("Import complete.")
+
+
 if __name__ == "__main__":
     main()
