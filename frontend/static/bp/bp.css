@@ -91,3 +91,34 @@ bp-global-footer:not(:defined) {
     scroll-behavior: auto !important;
   }
 }
+
+/* =========================================================================
+ * Hebrew Text Styling - Fix baseline alignment issue
+ * Hebrew text was "shooting up" above the baseline in literary design slides.
+ * ========================================================================= */
+[lang="he"],
+.hebrew,
+bp-literary-design [lang="he"] {
+  font-family: "SBL Hebrew", "Times New Roman", serif;
+  direction: rtl;
+  unicode-bidi: embed;
+  vertical-align: baseline;
+  line-height: 1.5;
+}
+
+/* Prevent inline Hebrew from shifting vertically */
+bp-literary-design span[lang="he"],
+bp-highlight span[lang="he"] {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* bp-text-hebrew component styling */
+bp-text-hebrew {
+  font-family: var(--font-hebrew), "Times New Roman", serif;
+  direction: rtl;
+  unicode-bidi: embed;
+  vertical-align: baseline;
+  line-height: 1.5;
+  display: inline-block;
+}
