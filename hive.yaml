@@ -1,0 +1,90 @@
+# Hive Runner Manifest
+# BibleProject Integration for Voogle
+#
+# EXECUTION WORKFLOW:
+#   1. hive run --wave 1-3     (Foundation + Core Feature)
+#   2. CHECKPOINT: Manual verification (see plan/CHECKPOINT.md)
+#   3. hive run --wave 4-5     (Integration + Polish)
+#   4. Full E2E test, bug fix PRs if needed
+#
+# NOTE: Acceptance criteria use unit/component tests only (no deployment).
+#       Visual/E2E verification happens at checkpoints.
+
+version: "1.0"
+
+project:
+  name: voogle
+  repo: git@github.com:jbraseth/voogle.git
+  baseBranch: main
+  planDir: plan
+
+execution:
+  maxParallelWorkers: 2
+  queenType: adaptive
+  autoMerge: true
+
+milestones:
+  - id: foundation
+    name: "Foundation"
+    description: "Core utilities for VTT conversion and asset resolution"
+    prs:
+      - id: I1
+        file: I1-vtt-asset-utils.md
+        branch: feat/vtt-asset-utils
+        wave: 1
+        highValue: true
+  - id: import
+    name: "Import Pipeline"
+    description: "Complete data import from research repository to Voogle"
+    prs:
+      - id: I2
+        file: I2-bibleproject-import.md
+        branch: feat/bibleproject-import
+        wave: 2
+        deps: [I1]
+        highValue: true
+  - id: media
+    name: "Media Infrastructure"
+    description: "HLS video player and slides API"
+    prs:
+      - id: P1
+        file: P1-media-player-hls.md
+        branch: feat/media-player-hls
+        wave: 1
+        highValue: true
+      - id: B1
+        file: B1-slides-api.md
+        branch: feat/slides-api
+        wave: 3
+        deps: [I2]
+        highValue: true
+  - id: slides
+    name: "Slide Components"
+    description: "Frontend slide rendering system with all variant types"
+    prs:
+      - id: P2
+        file: P2-slide-panel.md
+        branch: feat/slide-panel
+        wave: 3
+        deps: [P1]
+        highValue: true
+  - id: integration
+    name: "Search Integration"
+    description: "Connect search results to slide-enabled playback"
+    prs:
+      - id: N1
+        file: N1-search-integration.md
+        branch: feat/search-slides-integration
+        wave: 4
+        deps: [B1, P2]
+        highValue: true
+  - id: browser
+    name: "Course Browser"
+    description: "Browsable UI for courses and sessions"
+    prs:
+      - id: N2
+        file: N2-session-browser.md
+        branch: feat/session-browser
+        wave: 5
+        deps: [N1]
+
