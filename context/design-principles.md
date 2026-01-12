@@ -36,16 +36,6 @@ No duplicated business logic. Config in env vars. Constants defined once.
 - Config: `src/config/` reads env vars, exports typed settings
 - Shared utilities: `src/shared/`
 - Domain logic: Lives in one place, imported where needed
-- Infrastructure: Port derivation in `infra/dev_ports.py` (enables parallel development)
-
-### Parallel Development
-Multiple repo copies can run simultaneously for PR-scoped work on different milestones.
-
-- Ports are derived deterministically from directory name (voogle-copyN → offset N*10)
-- Start dev environment: `./infra/dev-up` (auto-derives ports)
-- View assigned ports: `python infra/dev_ports.py --show`
-- E2E tests auto-detect ports via ManifestReader importing same logic
-- No merge conflicts: manifest.json is gitignored, ports derived at runtime
 
 ### Composition Over Inheritance
 Prefer small, focused functions and classes. Inject dependencies explicitly.

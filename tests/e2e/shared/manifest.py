@@ -3,30 +3,22 @@
 
 """Manifest reader for test configuration.
 
-Auto-derives port configuration from project directory name, enabling
-parallel development across multiple repo copies without conflicts.
-
-Priority:
-1. Environment variables (VOOGLE_FRONTEND_PORT, VITE_API_PORT, etc.)
-2. manifest.json file (if exists)
-3. Auto-derived from directory name via infra/dev-ports.py logic
+Reads test configuration from environment variables, manifest.json, or defaults.
 """
 
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
-# Add infra/ to path for importing dev-ports
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.insert(0, str(_PROJECT_ROOT / "infra"))
-
-from dev_ports import get_ports  # noqa: E402
+# Default ports for development
+DEFAULT_FRONTEND_PORT = 8080
+DEFAULT_API_PORT = 8081
+DEFAULT_MANAGEMENT_PORT = 8580
 
 
 class ManifestReader:
-    """Read test configuration from manifest or auto-derive from ports."""
+    """Read test configuration from manifest or defaults."""
 
     MANIFEST_FILENAME = "manifest.json"
 
@@ -35,7 +27,7 @@ class ManifestReader:
         self.__manifest_content = self._load_manifest()
 
     def _load_manifest(self) -> dict[str, Any]:
-        """Load manifest from env vars, file, or auto-derive from ports."""
+        """Load manifest from env vars, file, or use defaults."""
         # Priority 1: Environment variables override everything
         env_manifest = self._from_env_vars()
         if env_manifest:
@@ -47,8 +39,18 @@ class ManifestReader:
             with open(manifest_path, encoding="utf-8") as f:
                 return json.loads(f.read())
 
-        # Priority 3: Auto-derive from project directory name
-        return get_ports(_PROJECT_ROOT).to_manifest()
+        # Priority 3: Default ports
+        return self._default_manifest()
+
+    def _default_manifest(self) -> dict[str, Any]:
+        """Return default manifest with standard development ports."""
+        return {
+            "frontend_url": f"http://localhost:{DEFAULT_FRONTEND_PORT}",
+            "api_url": f"http://localhost:{DEFAULT_API_PORT}",
+            "management_url": f"http://localhost:{DEFAULT_MANAGEMENT_PORT}",
+            "admin_username": "voogle-admin",
+            "admin_password": "*audio*search*engine",
+        }
 
     def _from_env_vars(self) -> dict[str, Any] | None:
         """Build manifest from environment variables if set."""
@@ -61,7 +63,7 @@ class ManifestReader:
             return {
                 "frontend_url": f"http://localhost:{frontend_port}",
                 "api_url": f"http://localhost:{api_port}",
-                "management_url": f"http://localhost:{management_port or '8501'}",
+                "management_url": f"http://localhost:{management_port or DEFAULT_MANAGEMENT_PORT}",
                 "admin_username": os.environ.get("ADMIN_USERNAME", "voogle-admin"),
                 "admin_password": os.environ.get(
                     "ADMIN_PASSWORD", "*audio*search*engine"

@@ -22,7 +22,7 @@ This guide explains how to set up and import BibleProject course content into Vo
    cd backend && make start
 
    # Or Docker dev
-   ./infra/dev-up
+   cd infra/development && docker compose up
    ```
 
 ## Import Commands
