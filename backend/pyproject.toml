@@ -127,6 +127,7 @@ dev = [
 voogle-episodes = "voogle.cli.episodes:main"
 voogle-management = "voogle.cli.management:main"
 voogle-search = "voogle.cli.search:main"
+voogle-bibleproject = "voogle.bibleproject.cli:main"
 
 [project.urls]
 Repository = "https://github.com/jbraseth/voogle"
