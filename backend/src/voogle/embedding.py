@@ -8,24 +8,29 @@ transcriptions (fragment length is configurable).
 See https://www.sbert.net/examples/applications/semantic-search/README.html
 
 """
+from __future__ import annotations
+
 import functools
 import logging
 import typing
-from typing import Protocol
+from typing import TYPE_CHECKING, Any, Protocol, Union
 
 import numpy as np
 import openai
-import sentence_transformers
-import torch
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from voogle import models, storage
 from voogle import transcription as tr
 from voogle.chunking import DEFAULT_CONFIG, ChunkingConfig
 
+if TYPE_CHECKING:
+    import sentence_transformers
+    import torch
+
 logger = logging.getLogger(__name__)
 
-Embeddings = typing.Union[list[torch.Tensor], np.ndarray, torch.Tensor]
+# Use Any at runtime to avoid importing torch, but types work for type checkers
+Embeddings = Union[list[Any], np.ndarray, Any]
 
 
 class EmbeddingsProvider(Protocol):
@@ -64,6 +69,7 @@ class LocalEmbeddingsProvider:
     def __init__(
         self, model: sentence_transformers.SentenceTransformer, model_name: str
     ) -> None:
+        # model is a SentenceTransformer instance passed in at runtime
         self.model = model
         self._model_name = model_name
 
@@ -215,8 +221,11 @@ def load_embeddings_model(name: str) -> sentence_transformers.SentenceTransforme
     it is cached, and later function executions will just use the
     cached instance.
     """
+    # Lazy import - only needed when actually loading ML models (worker only)
+    import sentence_transformers as st
+
     logger.info(f"loading and caching transformer model {name}")
-    return sentence_transformers.SentenceTransformer(name)
+    return st.SentenceTransformer(name)
 
 
 @functools.cache

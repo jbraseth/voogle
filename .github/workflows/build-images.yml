@@ -7,24 +7,34 @@ on:
         description: 'Version tag (e.g., v1.0.0, latest)'
         required: false
         default: 'latest'
-      build_backend:
-        description: 'Build backend image'
+      build_api:
+        description: 'Build API image (slim, no ML)'
+        type: boolean
+        default: true
+      build_worker:
+        description: 'Build Worker image (with ML)'
+        type: boolean
+        default: true
+      build_management:
+        description: 'Build Management image (with Streamlit)'
         type: boolean
         default: true
       build_frontend:
-        description: 'Build frontend image'
+        description: 'Build Frontend image'
         type: boolean
         default: true
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/voogle-backend
+  API_IMAGE: ghcr.io/${{ github.repository_owner }}/voogle-api
+  WORKER_IMAGE: ghcr.io/${{ github.repository_owner }}/voogle-worker
+  MANAGEMENT_IMAGE: ghcr.io/${{ github.repository_owner }}/voogle-management
   FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/voogle-ui
 
 jobs:
-  build-backend:
-    if: ${{ inputs.build_backend }}
-    name: Build Backend
+  build-api:
+    if: ${{ inputs.build_api }}
+    name: Build API Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,16 +58,103 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.BACKEND_IMAGE }}
+          images: ${{ env.API_IMAGE }}
           tags: |
             type=raw,value=${{ inputs.version }}
             type=sha,prefix=sha-
 
-      - name: Build and push backend
+      - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ./backend/dockerfile
+          file: ./backend/dockerfile.api
+          target: runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-worker:
+    if: ${{ inputs.build_worker }}
+    name: Build Worker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.WORKER_IMAGE }}
+          tags: |
+            type=raw,value=${{ inputs.version }}
+            type=sha,prefix=sha-
+
+      - name: Build and push Worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/dockerfile.worker
+          target: runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-management:
+    if: ${{ inputs.build_management }}
+    name: Build Management Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.MANAGEMENT_IMAGE }}
+          tags: |
+            type=raw,value=${{ inputs.version }}
+            type=sha,prefix=sha-
+
+      - name: Build and push Management image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/dockerfile.management
+          target: runtime
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -66,7 +163,7 @@ jobs:
 
   build-frontend:
     if: ${{ inputs.build_frontend }}
-    name: Build Frontend
+    name: Build Frontend Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -95,7 +192,7 @@ jobs:
             type=raw,value=${{ inputs.version }}
             type=sha,prefix=sha-
 
-      - name: Build and push frontend
+      - name: Build and push Frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend

@@ -1,5 +1,5 @@
 version: "3.9"
-name: voogle-backend
+name: voogle
 
 x-defaults: &defaults
   logging:
@@ -11,13 +11,11 @@ x-defaults: &defaults
 services:
   backend:
     <<: *defaults
-    image: ghcr.io/jbraseth/voogle-backend:latest
+    image: ghcr.io/jbraseth/voogle-api:latest
     # To build locally instead of pulling from ghcr.io, uncomment the build section:
     # build:
     #   context: ../../backend
-    #   dockerfile: dockerfile
-    #   args:
-    #     INSTALL_DEV: false
+    #   dockerfile: dockerfile.api
     depends_on:
       redis:
         condition: service_healthy
@@ -77,7 +75,11 @@ services:
 
   management:
     <<: *defaults
-    image: voogle-backend:latest
+    image: ghcr.io/jbraseth/voogle-management:latest
+    # To build locally instead of pulling from ghcr.io, uncomment the build section:
+    # build:
+    #   context: ../../backend
+    #   dockerfile: dockerfile.management
     depends_on:
       backend:
         condition: service_healthy
@@ -111,12 +113,19 @@ services:
 
   worker:
     <<: *defaults
-    image: voogle-backend:latest
+    image: ghcr.io/jbraseth/voogle-worker:latest
+    # To build locally instead of pulling from ghcr.io, uncomment the build section:
+    # build:
+    #   context: ../../backend
+    #   dockerfile: dockerfile.worker
     depends_on:
       redis:
         condition: service_healthy
     env_file:
       - .env
+    environment:
+      # Persist ML model downloads across container restarts
+      - HF_HOME=/data/.cache/huggingface
     command: python src/voogle/worker.py
     volumes:
       - ../../data-production/:/data/

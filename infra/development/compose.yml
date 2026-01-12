@@ -11,12 +11,10 @@ x-defaults: &defaults
 services:
   backend:
     <<: *defaults
-    image: voogle-backend:latest
+    image: voogle-api:latest
     build:
       context: ../../backend
-      dockerfile: dockerfile.dev
-      args:
-        INSTALL_DEV: true
+      dockerfile: dockerfile.api
     depends_on:
       redis:
         condition: service_healthy
@@ -66,7 +64,10 @@ services:
 
   management:
     <<: *defaults
-    image: voogle-backend:latest
+    image: voogle-management:latest
+    build:
+      context: ../../backend
+      dockerfile: dockerfile.management
     depends_on:
       backend:
         condition: service_healthy
@@ -91,17 +92,18 @@ services:
 
   worker:
     <<: *defaults
-    image: voogle-backend:latest
+    image: voogle-worker:latest
     depends_on:
       redis:
         condition: service_healthy
     build:
       context: ../../backend
-      dockerfile: dockerfile
-      args:
-        INSTALL_DEV: true
+      dockerfile: dockerfile.worker
     env_file:
       - .env
+    environment:
+      # Persist ML model downloads across container restarts
+      - HF_HOME=/data/.cache/huggingface
     command: python src/voogle/worker.py
     volumes:
       - ../../backend/:/backend/
