@@ -6,7 +6,6 @@
 
 import logging
 import random
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -334,12 +333,12 @@ async def rebuild_channel_embeddings(
         embeddings, fragments = await embedding.episode_embeddings(
             episode, provider, chunking_config
         )
-        # Use upsert directly - we've already deleted old points
+        # Use upsert with deterministic IDs for idempotent retries
         client.upsert(
             collection_name=collection_name,
             points=[
                 qdrant_client.models.PointStruct(
-                    id=str(uuid.uuid4()),
+                    id=vector.generate_point_id(str(episode.pk), fragment.start_idx),
                     vector=emb.tolist(),
                     payload=vector._gen_metadata(fragment, episode, provider),
                 )

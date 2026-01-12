@@ -383,3 +383,52 @@ async def test_search_with_vectors(
         assert r.response.score
         assert isinstance(r.vector, np.ndarray)
         assert r.vector.shape == (384,)  # Local model dimension
+
+
+# --- Deterministic Point ID Tests ---
+
+
+import uuid as uuid_lib
+
+
+@pytest.mark.description("Tests that point IDs are deterministic UUIDs")
+def test_generate_point_id_deterministic() -> None:
+    """Verify same inputs always produce the same UUID."""
+    id1 = vector.generate_point_id("episode-123", 0)
+    id2 = vector.generate_point_id("episode-123", 0)
+    id3 = vector.generate_point_id("episode-123", 1)
+
+    # Same inputs produce same output
+    assert id1 == id2
+
+    # Different inputs produce different output
+    assert id1 != id3
+
+
+@pytest.mark.description("Tests that point IDs are valid UUIDs")
+def test_generate_point_id_valid_uuid() -> None:
+    """Verify generated IDs are valid UUIDs."""
+    point_id = vector.generate_point_id("episode-123", 42)
+
+    # Should not raise - valid UUID
+    parsed = uuid_lib.UUID(point_id)
+    assert str(parsed) == point_id
+
+
+@pytest.mark.description("Tests point IDs with various episode formats")
+def test_generate_point_id_various_formats() -> None:
+    """Verify IDs work with different episode ID formats."""
+    # UUID-style episode IDs
+    id1 = vector.generate_point_id("550e8400-e29b-41d4-a716-446655440000", 0)
+    # Integer-style episode IDs
+    id2 = vector.generate_point_id("12345", 0)
+    # String episode IDs
+    id3 = vector.generate_point_id("my-podcast-episode", 0)
+
+    # All should be valid UUIDs
+    uuid_lib.UUID(id1)
+    uuid_lib.UUID(id2)
+    uuid_lib.UUID(id3)
+
+    # All should be different
+    assert len({id1, id2, id3}) == 3
