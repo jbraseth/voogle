@@ -3,8 +3,12 @@
 # All rights reserved.
 
 # =============================================================================
-# Stage 1: Builder - Install dependencies with uv
+# Worker Image - Full ML dependencies for transcription and embedding (~3.5GB)
+# Use for: worker (RQ jobs for transcription/embedding)
+# For slim API image (~500MB), use dockerfile.api instead
 # =============================================================================
+
+# Stage 1: Builder - Install dependencies with uv
 FROM python:3.12-slim-bookworm AS builder
 
 # Install uv for fast dependency installation
@@ -22,17 +26,18 @@ WORKDIR /app
 # Copy dependency files first (better layer caching)
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies into virtual environment
+# Install dependencies into virtual environment (including ML group)
 # --frozen ensures we use exact versions from lock file
 # --no-install-project skips installing the project itself (we'll do that after copying source)
-RUN uv sync --frozen --no-install-project --no-dev
+# --group ml includes ML dependencies for transcription and embedding
+RUN uv sync --frozen --no-install-project --no-dev --group ml
 
 # Copy source code
 COPY src/ ./src/
 COPY bin/ ./bin/
 
-# Install the project itself
-RUN uv sync --frozen --no-dev
+# Install the project itself (with ML group)
+RUN uv sync --frozen --no-dev --group ml
 
 # Replace CUDA PyTorch with CPU-only version (saves ~6GB)
 RUN uv pip uninstall torch torchvision torchaudio nvidia-cublas-cu12 nvidia-cuda-cupti-cu12 nvidia-cuda-nvrtc-cu12 nvidia-cuda-runtime-cu12 nvidia-cudnn-cu12 nvidia-cufft-cu12 nvidia-curand-cu12 nvidia-cusolver-cu12 nvidia-cusparse-cu12 nvidia-cusparselt-cu12 nvidia-nccl-cu12 nvidia-nvjitlink-cu12 nvidia-nvtx-cu12 triton 2>/dev/null || true && \
@@ -72,12 +77,12 @@ ENTRYPOINT ["/app/bin/entrypoint.sh"]
 CMD ["uvicorn", "src.voogle.main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
 
 # =============================================================================
-# Stage 3: Development - Includes dev dependencies for testing
+# Stage 3: Development - Includes dev + ML dependencies for testing
 # =============================================================================
 FROM builder AS development
 
-# Install dev dependencies
-RUN uv sync --frozen --group dev
+# Install dev dependencies (ML already included from builder stage)
+RUN uv sync --frozen --group dev --group ml
 
 # Runtime deps for dev
 RUN apt-get update && \

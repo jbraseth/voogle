@@ -2,7 +2,7 @@ name: voogle
 
 services:
   backend:
-    image: ghcr.io/jbraseth/voogle-backend:latest
+    image: ghcr.io/jbraseth/voogle-api:latest
     ports:
       - ${VOOGLE_API_PORT:-81}:80
     command: uvicorn src.voogle.main:app --host 0.0.0.0 --port 80
@@ -28,10 +28,9 @@ services:
       retries: 50
 
   management:
-    image: ghcr.io/jbraseth/voogle-backend:latest
+    image: ghcr.io/jbraseth/voogle-management:latest
     ports:
       - ${VOOGLE_MANAGEMENT_PORT:-8501}:8501
-    entrypoint: ""
     command: streamlit run src/voogle/management/🏠-Home.py
     volumes:
       - ./data/:/data/
@@ -46,11 +45,12 @@ services:
       retries: 30
 
   worker:
-    image: ghcr.io/jbraseth/voogle-backend:latest
+    image: ghcr.io/jbraseth/voogle-worker:latest
     depends_on:
       redis:
         condition: service_healthy
-    entrypoint: ""
+    environment:
+      - HF_HOME=/data/.cache/huggingface
     command: python src/voogle/worker.py
     volumes:
       - ./data/:/data/

@@ -43,8 +43,10 @@ docker compose -f compose.quickstart.yml logs -f
 ```
 
 Images are hosted on GitHub Container Registry and require no authentication:
-- `ghcr.io/jbraseth/voogle-backend:latest`
-- `ghcr.io/jbraseth/voogle-ui:latest`
+- `ghcr.io/jbraseth/voogle-api:latest` (API server, ~740MB)
+- `ghcr.io/jbraseth/voogle-worker:latest` (ML worker, ~3.2GB)
+- `ghcr.io/jbraseth/voogle-management:latest` (Streamlit UI, ~1GB)
+- `ghcr.io/jbraseth/voogle-ui:latest` (Frontend, ~530MB)
 
 You will need an admin user and password. By default user
 `voogle-admin` with password `*audio*search*engine` will be created.

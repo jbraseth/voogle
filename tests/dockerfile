@@ -24,8 +24,8 @@ RUN apt-get update && \
 # Copy dependency files first (better layer caching)
 COPY ./backend/pyproject.toml ./backend/uv.lock ./
 
-# Install all dependencies including dev group
-RUN uv sync --frozen --group dev
+# Install all dependencies including dev and ml groups (tests need ML for mocking)
+RUN uv sync --frozen --group dev --group ml
 
 # Install CPU-only torch (override any CUDA deps for smaller CI image)
 RUN uv pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
@@ -34,8 +34,8 @@ RUN uv pip install --no-cache-dir torch torchvision --index-url https://download
 COPY ./backend/src ./src
 COPY ./backend/bin ./bin
 
-# Install the project
-RUN uv sync --frozen --group dev
+# Install the project (with dev and ml groups)
+RUN uv sync --frozen --group dev --group ml
 
 # Install additional test dependencies
 COPY ./tests/requirements.txt ./requirements-test.txt

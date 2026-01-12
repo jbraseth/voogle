@@ -44,20 +44,14 @@ dependencies = [
     "xmltodict>=0.14.0,<1",
     "python-dateutil>=2.9.0,<3",
 
-    # ML/AI
-    "sentence-transformers>=3.0.0,<6",
-    "faster-whisper>=1.0.0,<2",
+    # LLM API (not local ML - just API client)
     "openai>=1.50.0,<3",
-    "transformers>=4.47.0,<5",
 
     # YouTube integration
     "yt-dlp>=2024.0.0",
 
     # Vector database
     "qdrant-client>=1.12.0,<2",
-
-    # Management UI
-    "streamlit>=1.41.0,<2",
 
     # Utilities
     "tenacity>=9.0.0,<10",
@@ -86,11 +80,6 @@ dependencies = [
     "grpcio-tools>=1.68.0,<2",
     "protobuf>=5.29.0,<6",
 
-    # Hugging Face
-    "huggingface-hub>=0.27.0,<1",
-    "safetensors>=0.4.0,<1",
-    "tokenizers>=0.21.0,<1",
-
     # Templating
     "Jinja2>=3.1.0,<4",
     "MarkupSafe>=3.0.0,<4",
@@ -111,6 +100,20 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# ML dependencies for transcription and embedding (worker only)
+ml = [
+    "sentence-transformers>=3.0.0,<6",
+    "faster-whisper>=1.0.0,<2",
+    "transformers>=4.47.0,<5",
+    # Hugging Face ecosystem (required by above)
+    "huggingface-hub>=0.27.0,<1",
+    "safetensors>=0.4.0,<1",
+    "tokenizers>=0.21.0,<1",
+]
+# Management UI dependencies
+management = [
+    "streamlit>=1.41.0,<2",
+]
 dev = [
     "ruff>=0.8.0",
     "pytest>=8.0.0",
@@ -140,6 +143,20 @@ build-backend = "hatchling.build"
 packages = ["src/voogle"]
 
 [dependency-groups]
+# ML dependencies for transcription and embedding (worker only)
+ml = [
+    "sentence-transformers>=3.0.0,<6",
+    "faster-whisper>=1.0.0,<2",
+    "transformers>=4.47.0,<5",
+    # Hugging Face ecosystem (required by above)
+    "huggingface-hub>=0.27.0,<1",
+    "safetensors>=0.4.0,<1",
+    "tokenizers>=0.21.0,<1",
+]
+# Management UI dependencies
+management = [
+    "streamlit>=1.41.0,<2",
+]
 dev = [
     "ruff>=0.8.0",
     "pytest>=8.0.0",

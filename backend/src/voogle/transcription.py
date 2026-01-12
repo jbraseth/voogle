@@ -3,16 +3,20 @@
 # All rights reserved.
 
 """Generate episode transcriptions"""
+from __future__ import annotations
+
 import csv
 import functools
 import logging
 import pathlib
 import time
-
-from faster_whisper import WhisperModel
+from typing import TYPE_CHECKING
 
 from voogle import storage, utils
 from voogle.models import media
+
+if TYPE_CHECKING:
+    from faster_whisper import WhisperModel
 
 logger = logging.getLogger(__name__)
 TRANSCRIBER_MODEL: str = "small"
@@ -21,8 +25,11 @@ Transcription = list[tuple[float, float, str]]
 
 @functools.cache
 def _get_model() -> WhisperModel:
+    # Lazy import - only needed when actually transcribing (worker only)
+    from faster_whisper import WhisperModel as _WhisperModel
+
     logger.info("loading transcription model object")
-    return WhisperModel(TRANSCRIBER_MODEL, device="cpu", compute_type="int8")
+    return _WhisperModel(TRANSCRIBER_MODEL, device="cpu", compute_type="int8")
 
 
 def transcribe(audio: pathlib.Path) -> Transcription:
