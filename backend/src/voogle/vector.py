@@ -7,6 +7,7 @@ database.
 """
 
 import functools
+import hashlib
 import logging
 import pathlib
 import uuid
@@ -25,6 +26,30 @@ from voogle.models import Episode
 DEFAULT_COLLECTION: str = "vectordb"
 
 logger = logging.getLogger(__name__)
+
+
+def generate_point_id(episode_pk: str, fragment_start_idx: int) -> str:
+    """Generate a deterministic Qdrant point ID as a valid UUID.
+
+    Using deterministic IDs makes upsert operations idempotent - if a job
+    crashes and retries, it will overwrite the same points rather than
+    creating duplicates.
+
+    The UUID is generated from a hash of the episode ID and fragment index,
+    ensuring the same inputs always produce the same UUID.
+
+    Args:
+        episode_pk: The episode's primary key.
+        fragment_start_idx: The fragment's start index in the transcription.
+
+    Returns:
+        A deterministic UUID string for the Qdrant point.
+    """
+    # Create a deterministic hash from the episode and fragment info
+    data = f"{episode_pk}-{fragment_start_idx}".encode("utf-8")
+    hash_bytes = hashlib.md5(data).digest()  # noqa: S324 - not for security
+    # Use UUID version 3 (MD5-based) namespace UUID format
+    return str(uuid.UUID(bytes=hash_bytes, version=3))
 
 
 def get_collection_name(provider_name: str) -> str:
@@ -181,12 +206,12 @@ async def add_episode(
     """
     if episode.embeddings:
         raise ValueError(f"Episode {episode.pk} already stored in the vector db")
-    # Use upsert with PointStruct (upload_records deprecated in newer qdrant)
+    # Use upsert with deterministic IDs for idempotent retries
     client.upsert(
         collection_name=collection_name,
         points=[
             models.PointStruct(
-                id=str(uuid.uuid4()),
+                id=generate_point_id(str(episode.pk), fragment.start_idx),
                 vector=emb.tolist(),
                 payload=_gen_metadata(fragment, episode, provider),
             )

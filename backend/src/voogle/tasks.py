@@ -6,14 +6,13 @@
 
 import logging
 import random
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import qdrant_client
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-from voogle import collection, embedding, models, settings, transcription, utils, vector
+from voogle import collection, embedding, job_manager, models, settings, transcription, utils, vector
 from voogle.chunking import DEFAULT_CONFIG, ChunkingConfig, load_chunking_config
 
 logger = logging.getLogger(__name__)
@@ -62,8 +61,11 @@ async def transcribe_episodes(
     if random_order:
         random.shuffle(episodes)
     for episode in episodes:
-        settings.queue.enqueue(
-            transcription.transcribe_episode, episode, job_timeout="600m"
+        job_manager.enqueue_with_retry(
+            transcription.transcribe_episode,
+            episode,
+            job_timeout="600m",
+            description=f"Transcribe: {episode.title}",
         )
     return total
 
@@ -331,12 +333,12 @@ async def rebuild_channel_embeddings(
         embeddings, fragments = await embedding.episode_embeddings(
             episode, provider, chunking_config
         )
-        # Use upsert directly - we've already deleted old points
+        # Use upsert with deterministic IDs for idempotent retries
         client.upsert(
             collection_name=collection_name,
             points=[
                 qdrant_client.models.PointStruct(
-                    id=str(uuid.uuid4()),
+                    id=vector.generate_point_id(str(episode.pk), fragment.start_idx),
                     vector=emb.tolist(),
                     payload=vector._gen_metadata(fragment, episode, provider),
                 )

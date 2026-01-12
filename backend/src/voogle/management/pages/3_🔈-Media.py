@@ -6,7 +6,7 @@ import asyncio
 
 import streamlit as st
 
-from voogle import collection, models, routers, settings, tasks
+from voogle import collection, job_manager, models, routers, tasks
 from voogle.collection import url_health
 from voogle.management import utils as m_utils
 
@@ -23,8 +23,11 @@ async def add_channel() -> None:
             with st.spinner("⌛ Adding new channel... Please, wait."):
                 _, ch = await collection.get_or_create_channel(channel_url)
                 if ch:
-                    settings.queue.enqueue(
-                        collection.update_channel, ch, job_timeout="600m"
+                    job_manager.enqueue_with_retry(
+                        collection.update_channel,
+                        ch,
+                        job_timeout="600m",
+                        description=f"Update channel: {ch.title}",
                     )
                     st.success(
                         f"""Channel "{ch.title}" correctly added to
@@ -70,7 +73,11 @@ async def add_local_channel() -> None:
                     error = True
             if not error:
                 await collection.get_or_create_local_channel(data)
-                settings.queue.enqueue(tasks.update_channels, job_timeout="1h")
+                job_manager.enqueue_with_retry(
+                    tasks.update_channels,
+                    job_timeout="1h",
+                    description=f"Update local channel: {data['name']}",
+                )
                 st.success(f"Channel **{data['name']}** created correctly")
                 st.success("Episodes are being updated in a background task...")
 
