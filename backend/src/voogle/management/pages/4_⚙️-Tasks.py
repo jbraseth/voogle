@@ -7,7 +7,7 @@ import datetime
 
 import streamlit as st
 
-from voogle import collection, settings, tasks, utils
+from voogle import collection, job_manager, tasks, utils
 from voogle.management import utils as m_utils
 
 
@@ -64,7 +64,11 @@ async def update_channels() -> None:
         date = dt.strftime("%c")
         st.markdown(f"**Last execution**: `{date}`")
     if st.button("⚙️ Update channels", use_container_width=True):
-        settings.queue.enqueue(tasks.update_channels, job_timeout="1h")
+        job_manager.enqueue_with_retry(
+            tasks.update_channels,
+            job_timeout="1h",
+            description="Update all channels",
+        )
         st.success("Channels started to update in the background")
 
 
@@ -114,7 +118,11 @@ async def store_pending() -> None:
         date = dt.strftime("%c")
         st.markdown(f"**Last execution**: `{date}`: {last_execution['info']}")
     if st.button("💾 Start indexing process", use_container_width=True):
-        settings.queue.enqueue(tasks.store_episodes_embeddings, job_timeout="20h")
+        job_manager.enqueue_with_retry(
+            tasks.store_episodes_embeddings,
+            job_timeout="20h",
+            description="Index all pending episodes",
+        )
         st.success("Started indexing in a background process")
 
 

@@ -13,7 +13,7 @@ from typing import Optional
 import qdrant_client
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-from voogle import collection, embedding, models, settings, transcription, utils, vector
+from voogle import collection, embedding, job_manager, models, settings, transcription, utils, vector
 from voogle.chunking import DEFAULT_CONFIG, ChunkingConfig, load_chunking_config
 
 logger = logging.getLogger(__name__)
@@ -62,8 +62,11 @@ async def transcribe_episodes(
     if random_order:
         random.shuffle(episodes)
     for episode in episodes:
-        settings.queue.enqueue(
-            transcription.transcribe_episode, episode, job_timeout="600m"
+        job_manager.enqueue_with_retry(
+            transcription.transcribe_episode,
+            episode,
+            job_timeout="600m",
+            description=f"Transcribe: {episode.title}",
         )
     return total
 

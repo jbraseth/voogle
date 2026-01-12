@@ -25,7 +25,6 @@ from voogle.chunking import DEFAULT_CONFIG, ChunkingConfig
 
 if TYPE_CHECKING:
     import sentence_transformers
-    import torch
 
 logger = logging.getLogger(__name__)
 
