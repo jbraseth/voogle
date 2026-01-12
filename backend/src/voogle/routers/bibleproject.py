@@ -462,6 +462,23 @@ async def graphql_visuals(request: fastapi.Request) -> dict:
         }
     elif asset_type == "video":
         visual_data["externalId"] = asset.get("externalId")
+    elif asset_type == "macro_literary_design":
+        # macro_literary_design stores JSON config in the 'html' field
+        config = None
+        html_data = asset.get("html")
+        if html_data:
+            try:
+                config = json.loads(html_data) if isinstance(html_data, str) else html_data
+            except (json.JSONDecodeError, TypeError):
+                config = None
+        visual_data = {
+            "caption": asset.get("caption"),
+            "config": config,
+            "id": asset.get("arc_id"),
+            "reference": asset.get("reference"),
+            "title": asset.get("title"),
+            "type": "macro_literary_design",
+        }
 
     return {
         "data": {
