@@ -1,15 +1,32 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Core domain types and abstractions."""
+"""Core domain models for Voogle.
 
-from .location import (
-    CodeLocation as CodeLocation,
-    ElementSelectorLocation as ElementSelectorLocation,
-    ImageRegionLocation as ImageRegionLocation,
-    Location as Location,
-    LocationType as LocationType,
-    PageBboxLocation as PageBboxLocation,
-    SlideLocation as SlideLocation,
-    TimestampLocation as TimestampLocation,
+This module exports the foundational data structures used throughout the
+application for representing searchable content.
+"""
+from voogle.core.fragment import ContentType, Fragment
+from voogle.core.location import (
+    CodeLocation,
+    ElementSelectorLocation,
+    ImageRegionLocation,
+    Location,
+    LocationType,
+    PageBboxLocation,
+    SlideLocation,
+    TimestampLocation,
 )
+
+__all__ = [
+    "CodeLocation",
+    "ContentType",
+    "ElementSelectorLocation",
+    "Fragment",
+    "ImageRegionLocation",
+    "Location",
+    "LocationType",
+    "PageBboxLocation",
+    "SlideLocation",
+    "TimestampLocation",
+]
