@@ -37,6 +37,9 @@ ignore = [
     "N999",    # Streamlit uses emoji in page filenames by design
     "RUF001",  # Emoji in markdown/docstrings is intentional
 ]
+"backend/src/voogle/adapters/audio.py" = [
+    "ANN401",  # Any type used for faster-whisper internal types (lazy-loaded)
+]
 
 [lint.flake8-annotations]
 suppress-none-returning = false  # Require -> None even for fixtures
