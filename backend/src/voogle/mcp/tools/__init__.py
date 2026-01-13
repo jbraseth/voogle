@@ -8,6 +8,7 @@ Voogle's semantic search capabilities.
 """
 
 from voogle.mcp.tools.expand import expand_tool
+from voogle.mcp.tools.resolve import resolve_tool
 from voogle.mcp.tools.search import search_tool
 
-__all__ = ["expand_tool", "search_tool"]
+__all__ = ["expand_tool", "resolve_tool", "search_tool"]
