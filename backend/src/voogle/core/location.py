@@ -174,12 +174,14 @@ class CodeLocation(Location):
         start_line: 1-indexed starting line number.
         end_line: Optional 1-indexed ending line number.
         column: Optional column number.
+        git_ref: Optional git commit SHA for reproducible code locations.
     """
 
     file_path: str
     start_line: int
     end_line: int | None = None
     column: int | None = None
+    git_ref: str | None = None
 
     def __post_init__(self) -> None:
         if not self.file_path:
@@ -196,13 +198,22 @@ class CodeLocation(Location):
         return LocationType.CODE
 
     def to_deep_link(self, base_url: str) -> str:
-        """Generate a deep link with line number fragment.
+        """Generate a deep link with line number fragment and optional git ref.
 
-        Uses GitHub-style line references (#L10-L20).
+        Uses GitHub-style line references (#L10-L20) and blob/ref paths.
+
+        Args:
+            base_url: The base URL of the code repository (e.g., https://github.com/org/repo).
+
+        Returns:
+            URL with optional ref and line fragment (e.g., /blob/abc123/file.py#L10-L20).
         """
         fragment = f"L{self.start_line}"
         if self.end_line is not None and self.end_line != self.start_line:
             fragment += f"-L{self.end_line}"
+
+        if self.git_ref:
+            return f"{base_url}/blob/{self.git_ref}/{self.file_path}#{fragment}"
         return f"{base_url}/{self.file_path}#{fragment}"
 
 
