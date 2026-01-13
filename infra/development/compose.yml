@@ -109,6 +109,34 @@ services:
       - ../../backend/:/backend/
       - ../../data/:/data/
 
+  mcp:
+    <<: *defaults
+    image: voogle-api:latest
+    build:
+      context: ../../backend
+      dockerfile: dockerfile.api
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - MCP_TRANSPORT=sse
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+    ports:
+      - "8082:8000"
+    command: python -m voogle.mcp.server
+    volumes:
+      - ../../backend/:/backend/
+      - ../../data/:/data/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:8000/health"]
+      interval: 6s
+      timeout: 10s
+      retries: 50
+      start_period: 10s
+
   qdrant:
     <<: *defaults
     image: qdrant/qdrant:v1.12.5
