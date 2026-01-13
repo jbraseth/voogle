@@ -50,8 +50,16 @@ from voogle.pipeline.base import (
     StageProgress,
     StageStatus,
 )
+from voogle.pipeline.indexing import (
+    EmbeddedFragment,
+    IndexingConfig,
+    IndexingResult,
+    IndexingStage,
+    generate_point_id,
+)
 
 __all__ = [
+    # Base pipeline infrastructure
     "Pipeline",
     "PipelineConfig",
     "PipelineError",
@@ -62,4 +70,10 @@ __all__ = [
     "StageError",
     "StageProgress",
     "StageStatus",
+    # Indexing stage
+    "EmbeddedFragment",
+    "IndexingConfig",
+    "IndexingResult",
+    "IndexingStage",
+    "generate_point_id",
 ]
