@@ -97,6 +97,9 @@ dependencies = [
 
     # Typing
     "typing_extensions>=4.12.0,<5",
+
+    # MCP (Model Context Protocol)
+    "fastmcp>=2.0.0,<3",
 ]
 
 [project.optional-dependencies]
@@ -133,6 +136,7 @@ voogle-management = "voogle.cli.management:main"
 voogle-search = "voogle.cli.search:main"
 voogle-jobs = "voogle.cli.jobs:main"
 voogle-bibleproject = "voogle.bibleproject.cli:main"
+voogle-mcp = "voogle.mcp.server:run_server"
 
 [project.urls]
 Repository = "https://github.com/jbraseth/voogle"
