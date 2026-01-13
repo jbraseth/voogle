@@ -78,7 +78,7 @@ class CollectionConfig:
         write_consistency_factor: Number of replicas that must acknowledge writes.
     """
 
-    vectors_config: dict[str, models.VectorParams | models.SparseVectorParams] = field(
+    vectors_config: dict[str, models.VectorParams] = field(
         default_factory=dict
     )
     payload_schema: dict[str, models.PayloadSchemaType] = field(default_factory=dict)
@@ -107,8 +107,11 @@ def _create_vectors_config(
     text_dense_dim: int = DEFAULT_TEXT_DENSE_DIM,
     image_dim: int = DEFAULT_IMAGE_DIM,
     multimodal_dim: int = DEFAULT_MULTIMODAL_DIM,
-) -> dict[str, models.VectorParams | models.SparseVectorParams]:
+) -> dict[str, models.VectorParams]:
     """Create named vectors configuration for multimodal support.
+
+    Note: This returns only dense vector configs. Sparse vectors are
+    configured separately via sparse_vectors_config parameter.
 
     Args:
         text_dense_dim: Dimension for dense text embeddings.
@@ -122,9 +125,6 @@ def _create_vectors_config(
         VectorName.TEXT_DENSE.value: models.VectorParams(
             size=text_dense_dim,
             distance=models.Distance.COSINE,
-        ),
-        VectorName.TEXT_SPARSE.value: models.SparseVectorParams(
-            modifier=models.Modifier.IDF,
         ),
         VectorName.IMAGE.value: models.VectorParams(
             size=image_dim,
