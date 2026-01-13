@@ -40,6 +40,18 @@ ignore = [
 "backend/src/voogle/adapters/audio.py" = [
     "ANN401",  # Any type used for faster-whisper internal types (lazy-loaded)
 ]
+"backend/src/voogle/adapters/code.py" = [
+    "ANN401",  # Any type used for tree-sitter internal types (lazy-loaded)
+]
+"backend/src/voogle/adapters/pdf.py" = [
+    "ANN401",  # Any type used for pymupdf internal types (lazy-loaded)
+]
+"backend/src/voogle/adapters/video.py" = [
+    "ANN401",  # Any type used for cv2/pytesseract/yt-dlp internal types (lazy-loaded)
+]
+"backend/src/voogle/adapters/web.py" = [
+    "ANN401",  # Any type used for BeautifulSoup internal types
+]
 
 [lint.flake8-annotations]
 suppress-none-returning = false  # Require -> None even for fixtures
