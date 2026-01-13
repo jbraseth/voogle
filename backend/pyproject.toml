@@ -110,6 +110,10 @@ ml = [
     "safetensors>=0.4.0,<1",
     "tokenizers>=0.21.0,<1",
 ]
+# PDF processing dependencies
+pdf = [
+    "pymupdf>=1.24.0,<2",
+]
 # Management UI dependencies
 management = [
     "streamlit>=1.41.0,<2",
@@ -154,6 +158,10 @@ ml = [
     "huggingface-hub>=0.27.0,<1",
     "safetensors>=0.4.0,<1",
     "tokenizers>=0.21.0,<1",
+]
+# PDF processing dependencies
+pdf = [
+    "pymupdf>=1.24.0,<2",
 ]
 # Management UI dependencies
 management = [
