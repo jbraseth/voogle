@@ -57,13 +57,16 @@ from voogle.pipeline.chunking import (
     ChunkingStage,
     ChunkStrategy,
 )
+from voogle.pipeline.indexing import (
+    EmbeddedFragment,
+    IndexingConfig,
+    IndexingResult,
+    IndexingStage,
+    generate_point_id,
+)
 
 __all__ = [
-    "Chunk",
-    "ChunkableContent",
-    "ChunkConfig",
-    "ChunkingStage",
-    "ChunkStrategy",
+    # Base pipeline infrastructure
     "Pipeline",
     "PipelineConfig",
     "PipelineError",
@@ -74,4 +77,16 @@ __all__ = [
     "StageError",
     "StageProgress",
     "StageStatus",
+    # Chunking stage
+    "Chunk",
+    "ChunkableContent",
+    "ChunkConfig",
+    "ChunkingStage",
+    "ChunkStrategy",
+    # Indexing stage
+    "EmbeddedFragment",
+    "IndexingConfig",
+    "IndexingResult",
+    "IndexingStage",
+    "generate_point_id",
 ]
