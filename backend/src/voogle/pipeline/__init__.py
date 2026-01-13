@@ -50,8 +50,20 @@ from voogle.pipeline.base import (
     StageProgress,
     StageStatus,
 )
+from voogle.pipeline.chunking import (
+    Chunk,
+    ChunkableContent,
+    ChunkConfig,
+    ChunkingStage,
+    ChunkStrategy,
+)
 
 __all__ = [
+    "Chunk",
+    "ChunkableContent",
+    "ChunkConfig",
+    "ChunkingStage",
+    "ChunkStrategy",
     "Pipeline",
     "PipelineConfig",
     "PipelineError",
