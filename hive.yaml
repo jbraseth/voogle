@@ -1,14 +1,5 @@
 # Hive Runner Manifest
-# BibleProject Integration for Voogle
-#
-# EXECUTION WORKFLOW:
-#   1. hive run --wave 1-3     (Foundation + Core Feature)
-#   2. CHECKPOINT: Manual verification (see plan/CHECKPOINT.md)
-#   3. hive run --wave 4-5     (Integration + Polish)
-#   4. Full E2E test, bug fix PRs if needed
-#
-# NOTE: Acceptance criteria use unit/component tests only (no deployment).
-#       Visual/E2E verification happens at checkpoints.
+# Objective: # GitHub Issues for Voogle → Generalized Fragment-Level Multimodal Search
 
 version: "1.0"
 
@@ -19,72 +10,321 @@ project:
   planDir: plan
 
 execution:
-  maxParallelWorkers: 2
+  maxParallelWorkers: 3
   queenType: adaptive
   autoMerge: true
 
 milestones:
-  - id: foundation
-    name: "Foundation"
-    description: "Core utilities for VTT conversion and asset resolution"
+  - id: M1
+    name: "Core Foundation"
+    description: "Fragment abstraction, location types, content adapter interface, and basic embedding provider infrastructure"
     prs:
-      - id: I1
-        file: I1-vtt-asset-utils.md
-        branch: feat/vtt-asset-utils
+      - id: C1
+        file: C1-fragment-interface.md
+        branch: feature/C1-fragment-interface
         wave: 1
         highValue: true
-  - id: import
-    name: "Import Pipeline"
-    description: "Complete data import from research repository to Voogle"
-    prs:
-      - id: I2
-        file: I2-bibleproject-import.md
-        branch: feat/bibleproject-import
+      - id: C2
+        file: C2-location-types.md
+        branch: feature/C2-location-types
+        wave: 1
+        highValue: true
+      - id: R1
+        file: R1-embedding-research.md
+        branch: research/R1-embedding-models
+        wave: 1
+      - id: C3
+        file: C3-content-adapter-interface.md
+        branch: feature/C3-content-adapter
         wave: 2
-        deps: [I1]
+        deps: [C1, C2]
         highValue: true
-  - id: media
-    name: "Media Infrastructure"
-    description: "HLS video player and slides API"
-    prs:
-      - id: P1
-        file: P1-media-player-hls.md
-        branch: feat/media-player-hls
-        wave: 1
+      - id: C4
+        file: C4-corpus-abstraction.md
+        branch: feature/C4-corpus
+        wave: 2
+        deps: [C1]
+      - id: C5
+        file: C5-embedding-provider-interface.md
+        branch: feature/C5-embedding-provider
+        wave: 2
         highValue: true
-      - id: B1
-        file: B1-slides-api.md
-        branch: feat/slides-api
+      - id: C6
+        file: C6-adapter-registry.md
+        branch: feature/C6-adapter-registry
         wave: 3
-        deps: [I2]
-        highValue: true
-  - id: slides
-    name: "Slide Components"
-    description: "Frontend slide rendering system with all variant types"
-    prs:
-      - id: P2
-        file: P2-slide-panel.md
-        branch: feat/slide-panel
+        deps: [C3]
+      - id: C7
+        file: C7-sentence-transformers-provider.md
+        branch: feature/C7-st-provider
         wave: 3
-        deps: [P1]
+        deps: [C5]
         highValue: true
-  - id: integration
-    name: "Search Integration"
-    description: "Connect search results to slide-enabled playback"
+  - id: M2
+    name: "Audio Refactor"
+    description: "Refactor existing audio/podcast capability into new architecture with ingestion pipeline"
     prs:
-      - id: N1
-        file: N1-search-integration.md
-        branch: feat/search-slides-integration
+      - id: V1
+        file: V1-unified-collection-schema.md
+        branch: feature/V1-collection-schema
+        wave: 3
+        deps: [C1, C2]
+        highValue: true
+      - id: V2
+        file: V2-collection-migration.md
+        branch: feature/V2-collection-migration
         wave: 4
-        deps: [B1, P2]
+        deps: [V1]
         highValue: true
-  - id: browser
-    name: "Course Browser"
-    description: "Browsable UI for courses and sessions"
-    prs:
-      - id: N2
-        file: N2-session-browser.md
-        branch: feat/session-browser
+      - id: P1
+        file: P1-pipeline-architecture.md
+        branch: feature/P1-pipeline-architecture
+        wave: 4
+        deps: [C3, C6, C5]
+        highValue: true
+      - id: P2
+        file: P2-chunking-stage.md
+        branch: feature/P2-chunking-stage
         wave: 5
-        deps: [N1]
+        deps: [P1]
+      - id: P3
+        file: P3-embedding-stage.md
+        branch: feature/P3-embedding-stage
+        wave: 5
+        deps: [P1, C7]
+      - id: P4
+        file: P4-indexing-stage.md
+        branch: feature/P4-indexing-stage
+        wave: 5
+        deps: [P1, V2]
+      - id: P5
+        file: P5-source-fetching-stage.md
+        branch: feature/P5-source-fetching
+        wave: 5
+        deps: [P1]
+      - id: A1
+        file: A1-audio-adapter.md
+        branch: feature/A1-audio-adapter
+        wave: 6
+        deps: [C3, C2]
+        highValue: true
+      - id: P6
+        file: P6-job-management.md
+        branch: feature/P6-job-management
+        wave: 6
+        deps: [P1]
+      - id: V3
+        file: V3-search-service.md
+        branch: feature/V3-search-service
+        wave: 6
+        deps: [V2, C7]
+        highValue: true
+      - id: V4
+        file: V4-context-expansion.md
+        branch: feature/V4-context-expansion
+        wave: 7
+        deps: [V3]
+      - id: V5
+        file: V5-payload-indexing.md
+        branch: feature/V5-payload-indexing
+        wave: 7
+        deps: [V1]
+  - id: M3
+    name: "PDF + Web"
+    description: "Document and web search with PDF adapter, web adapter, and location durability features"
+    prs:
+      - id: A2
+        file: A2-pdf-adapter.md
+        branch: feature/A2-pdf-adapter
+        wave: 8
+        deps: [C3, C2]
+        highValue: true
+      - id: A3
+        file: A3-web-adapter.md
+        branch: feature/A3-web-adapter
+        wave: 8
+        deps: [C3, C2]
+        highValue: true
+  - id: M4
+    name: "Video + Slides"
+    description: "Video content support with multimodal embeddings and slide synchronization"
+    prs:
+      - id: A4
+        file: A4-video-slides-adapter.md
+        branch: feature/A4-video-slides-adapter
+        wave: 10
+        deps: [C3, A1]
+        highValue: true
+      - id: C8
+        file: C8-languagebind-provider.md
+        branch: feature/C8-languagebind-provider
+        wave: 10
+        deps: [C5]
+        highValue: true
+  - id: M5
+    name: "Code + Advanced"
+    description: "Code search with AST-aware chunking and hybrid retrieval with sparse vectors"
+    prs:
+      - id: A5
+        file: A5-code-adapter.md
+        branch: feature/A5-code-adapter
+        wave: 11
+        deps: [C3, C2]
+        highValue: true
+      - id: A6
+        file: A6-image-adapter.md
+        branch: feature/A6-image-adapter
+        wave: 11
+        deps: [C3, C5]
+      - id: C9
+        file: C9-hybrid-search.md
+        branch: feature/C9-hybrid-search
+        wave: 12
+        deps: [C5, V2]
+        highValue: true
+      - id: A7
+        file: A7-email-adapter.md
+        branch: feature/A7-email-adapter
+        wave: 13
+        deps: [C3]
+      - id: C10
+        file: C10-aws-nova-provider.md
+        branch: feature/C10-aws-nova
+        wave: 13
+        deps: [C5]
+  - id: M6
+    name: "MCP Server"
+    description: "LLM integration via Model Context Protocol with full tool suite"
+    prs:
+      - id: M1-1
+        file: M1-mcp-server-infrastructure.md
+        branch: feature/M1-mcp-infrastructure
+        wave: 8
+        highValue: true
+      - id: M1-2
+        file: M1-search-tool.md
+        branch: feature/M1-search-tool
+        wave: 10
+        deps: [M1-1, V3]
+        highValue: true
+      - id: M1-3
+        file: M1-expand-tool.md
+        branch: feature/M1-expand-tool
+        wave: 11
+        deps: [M1-1, V4]
+      - id: M1-4
+        file: M1-resolve-tool.md
+        branch: feature/M1-resolve-tool
+        wave: 11
+        deps: [M1-1, C2]
+      - id: M1-5
+        file: M1-list-corpora-tool.md
+        branch: feature/M1-list-corpora
+        wave: 12
+        deps: [M1-1, C4]
+      - id: M1-6
+        file: M1-ingest-tool.md
+        branch: feature/M1-ingest-tool
+        wave: 13
+        deps: [M1-1, P6]
+        highValue: true
+      - id: M1-7
+        file: M1-ingestion-status-tool.md
+        branch: feature/M1-ingestion-status
+        wave: 14
+        deps: [M1-6]
+      - id: M1-8
+        file: M1-mcp-resources.md
+        branch: feature/M1-mcp-resources
+        wave: 14
+        deps: [M1-1, C4]
+  - id: M7
+    name: "Durability"
+    description: "Location validation, content snapshotting, and graceful degradation"
+    prs:
+      - id: D1
+        file: D1-web-snapshotting.md
+        branch: feature/D1-web-snapshotting
+        wave: 9
+        deps: [A3]
+      - id: D2
+        file: D2-archive-fallback.md
+        branch: feature/D2-archive-fallback
+        wave: 9
+        deps: [D1]
+      - id: D3
+        file: D3-git-commit-pinning.md
+        branch: feature/D3-git-pinning
+        wave: 12
+        deps: [A5]
+      - id: D4
+        file: D4-content-addressed-ids.md
+        branch: feature/D4-content-addressed
+        wave: 14
+        deps: [C1]
+      - id: D5
+        file: D5-location-validation-service.md
+        branch: feature/D5-location-validation
+        wave: 15
+        deps: [D1, D2, D3]
+        highValue: true
+      - id: D6
+        file: D6-graceful-degradation.md
+        branch: feature/D6-graceful-degradation
+        wave: 16
+        deps: [D5]
+  - id: M8
+    name: "Testing"
+    description: "Comprehensive test coverage including integration, E2E, and performance benchmarks"
+    prs:
+      - id: T1
+        file: T1-test-infrastructure.md
+        branch: feature/T1-test-infrastructure
+        wave: 4
+      - id: T2
+        file: T2-audio-integration-tests.md
+        branch: feature/T2-audio-tests
+        wave: 7
+        deps: [T1, A1]
+      - id: T3
+        file: T3-pdf-integration-tests.md
+        branch: feature/T3-pdf-tests
+        wave: 9
+        deps: [T1, A2]
+      - id: T4
+        file: T4-web-integration-tests.md
+        branch: feature/T4-web-tests
+        wave: 9
+        deps: [T1, A3]
+      - id: T5
+        file: T5-video-integration-tests.md
+        branch: feature/T5-video-tests
+        wave: 12
+        deps: [T1, A4]
+      - id: T6
+        file: T6-code-integration-tests.md
+        branch: feature/T6-code-tests
+        wave: 13
+        deps: [T1, A5]
+      - id: T7
+        file: T7-e2e-search-tests.md
+        branch: feature/T7-e2e-tests
+        wave: 14
+        deps: [T1, V3, V4]
+        highValue: true
+      - id: T8
+        file: T8-embedding-benchmarks.md
+        branch: feature/T8-embedding-benchmarks
+        wave: 15
+        deps: [T1, C5]
+      - id: T9
+        file: T9-mcp-contract-tests.md
+        branch: feature/T9-mcp-tests
+        wave: 15
+        deps: [T1, M1-1]
+      - id: T10
+        file: T10-performance-benchmarks.md
+        branch: feature/T10-perf-benchmarks
+        wave: 16
+        deps: [T1]
 
