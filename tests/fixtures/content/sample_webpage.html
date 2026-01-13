@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started with Semantic Search</title>
+    <meta name="description" content="Learn how to implement semantic search in your applications">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/docs">Documentation</a>
+            <a href="/tutorials">Tutorials</a>
+        </nav>
+    </header>
+
+    <main>
+        <article>
+            <h1>Getting Started with Semantic Search</h1>
+
+            <p class="intro">
+                Semantic search goes beyond traditional keyword matching to understand
+                the meaning and context of queries. This guide will help you implement
+                semantic search in your applications.
+            </p>
+
+            <section id="prerequisites">
+                <h2>Prerequisites</h2>
+                <ul>
+                    <li>Python 3.10 or higher</li>
+                    <li>Basic understanding of machine learning concepts</li>
+                    <li>Familiarity with REST APIs</li>
+                </ul>
+            </section>
+
+            <section id="setup">
+                <h2>Setting Up Your Environment</h2>
+                <p>
+                    First, install the required dependencies using pip:
+                </p>
+                <pre><code>pip install sentence-transformers qdrant-client</code></pre>
+                <p>
+                    These libraries provide everything you need to create embeddings
+                    and store them in a vector database.
+                </p>
+            </section>
+
+            <section id="creating-embeddings">
+                <h2>Creating Embeddings</h2>
+                <p>
+                    Embeddings convert text into numerical vectors that capture semantic
+                    meaning. Similar texts will have similar vector representations.
+                </p>
+                <pre><code>
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
+embeddings = model.encode(['Hello world', 'Hi there'])
+                </code></pre>
+            </section>
+
+            <section id="conclusion">
+                <h2>Next Steps</h2>
+                <p>
+                    Now that you understand the basics, explore our advanced tutorials
+                    on hybrid search, filtering, and production deployment.
+                </p>
+            </section>
+        </article>
+    </main>
+
+    <footer>
+        <p>Copyright 2025 Semantic Search Tutorial</p>
+    </footer>
+</body>
+</html>

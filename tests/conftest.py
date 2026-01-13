@@ -19,6 +19,8 @@ pytest_plugins = [
     "fixtures.playwright",
     "fixtures.voogle",
     "fixtures.vector",
+    "fixtures.content_fixtures",
+    "fixtures.infrastructure",
 ]
 
 
