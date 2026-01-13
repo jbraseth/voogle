@@ -347,5 +347,155 @@ class IngestTool:
         }
 
 
+@dataclass
+class IngestionStatusInput:
+    """Input schema for the MCP get_ingestion_status tool.
+
+    Attributes:
+        job_id: Unique identifier of the ingestion job to query.
+    """
+
+    job_id: str
+
+
+@dataclass
+class IngestionStatusOutput:
+    """Output from the get_ingestion_status tool.
+
+    Attributes:
+        job_id: Unique identifier for the ingestion job.
+        status: Current job status (pending, running, completed, failed, cancelled).
+        progress_percentage: Progress as a percentage (0-100).
+        documents_processed: Number of documents/items processed so far.
+        total_documents: Total number of documents/items to process.
+        errors: List of error messages if any occurred.
+        message: Human-readable status message.
+    """
+
+    job_id: str
+    status: str
+    progress_percentage: float
+    documents_processed: int
+    total_documents: int
+    errors: list[str]
+    message: str
+
+
+class GetIngestionStatusTool:
+    """MCP tool for checking ingestion job progress.
+
+    Returns the current status, progress percentage, documents processed,
+    and any errors for a given ingestion job ID.
+    """
+
+    name: str = "get_ingestion_status"
+    description: str = (
+        "Check the status and progress of an ingestion job. "
+        "Returns current status, progress percentage, documents processed, and errors."
+    )
+
+    def __init__(self, job_service: Optional[JobService] = None) -> None:
+        """Initialize the get_ingestion_status tool.
+
+        Args:
+            job_service: Optional JobService instance for job management.
+                If None, uses the default service.
+        """
+        self._job_service = job_service
+
+    @property
+    def job_service(self) -> JobService:
+        """Get or lazily initialize the job service."""
+        if self._job_service is None:
+            self._job_service = get_job_service()
+        return self._job_service
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        """Return the JSON schema for tool input parameters.
+
+        Returns:
+            JSON Schema dictionary describing the input format.
+        """
+        return {
+            "type": "object",
+            "properties": {
+                "job_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the ingestion job to query",
+                    "minLength": 1,
+                },
+            },
+            "required": ["job_id"],
+        }
+
+    def __call__(self, job_id: str) -> dict[str, Any]:
+        """Get the status of an ingestion job.
+
+        Args:
+            job_id: Unique identifier of the ingestion job to query.
+
+        Returns:
+            Dictionary containing job status, progress, documents processed, and errors.
+
+        Raises:
+            ValueError: If job_id is empty or invalid.
+        """
+        # Validate job_id
+        if not job_id or not job_id.strip():
+            raise ValueError("job_id cannot be empty")
+        job_id = job_id.strip()
+
+        # Get job from service
+        job = self.job_service.get(job_id)
+        if job is None:
+            return {
+                "job_id": job_id,
+                "status": "not_found",
+                "progress_percentage": 0.0,
+                "documents_processed": 0,
+                "total_documents": 0,
+                "errors": [f"Job with id '{job_id}' not found"],
+                "message": f"No ingestion job found with id '{job_id}'",
+            }
+
+        # Build error list
+        errors: list[str] = []
+        if job.error:
+            errors.append(job.error)
+
+        # Build status message
+        if job.status.is_terminal():
+            if job.status.value == "completed":
+                message = (
+                    f"Ingestion completed. Processed {job.progress.current} "
+                    f"of {job.progress.total} documents."
+                )
+            elif job.status.value == "failed":
+                message = f"Ingestion failed: {job.error or 'Unknown error'}"
+            else:  # cancelled
+                message = "Ingestion was cancelled."
+        elif job.status.value == "running":
+            message = (
+                f"Ingestion in progress. Processed {job.progress.current} "
+                f"of {job.progress.total} documents ({job.progress.percentage:.1f}%)."
+            )
+            if job.progress.stage:
+                message += f" Stage: {job.progress.stage}"
+        else:  # pending
+            message = "Ingestion job is queued and waiting to start."
+
+        return {
+            "job_id": job_id,
+            "status": job.status.value,
+            "progress_percentage": job.progress.percentage,
+            "documents_processed": job.progress.current,
+            "total_documents": job.progress.total,
+            "errors": errors,
+            "message": message,
+        }
+
+
 # Module-level instance for convenient access
 ingest_tool = IngestTool()
+get_ingestion_status_tool = GetIngestionStatusTool()
