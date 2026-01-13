@@ -9,10 +9,19 @@ polymorphic location support for different content types.
 
 This module also provides content-addressed ID generation for fragments,
 enabling stable IDs for change detection and deduplication.
+
+Graceful Degradation:
+    Fragments include metadata for graceful UI degradation when source
+    locations become unavailable:
+    - location_confidence: Indicates reliability of the location
+    - fallback_url: Alternative URL when primary is unavailable
+    - archive_url: Archive.org snapshot URL for broken sources
+    - last_known_good: Timestamp when location was last verified
 """
 import hashlib
 import json
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
@@ -29,6 +38,26 @@ class ContentType(Enum):
     SLIDE = "slide"
     TEXT = "text"
     EMAIL = "email"
+
+
+class LocationConfidence(Enum):
+    """Confidence level for fragment location availability.
+
+    Used by clients to decide how to present location-dependent features.
+    For example, a video player button might be disabled when confidence
+    is LOW or UNAVAILABLE.
+
+    Attributes:
+        HIGH: Location verified within 24 hours, highly reliable.
+        MEDIUM: Location verified within 7 days, likely available.
+        LOW: Location not verified recently or had intermittent failures.
+        UNAVAILABLE: Location is known to be broken or inaccessible.
+    """
+
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    UNAVAILABLE = "unavailable"
 
 
 @dataclass(frozen=True)
@@ -49,6 +78,15 @@ class Fragment:
         deep_link: URL or path to directly access this fragment in context.
             None if not available.
         metadata: Additional source-specific metadata as key-value pairs.
+        location_confidence: Confidence level for location availability.
+            Defaults to HIGH for newly indexed content. Used by clients
+            to gracefully degrade UI when locations may be unavailable.
+        fallback_url: Alternative URL to use when primary location fails.
+            May point to a different CDN, mirror, or cached version.
+        archive_url: Archive.org Wayback Machine URL for this content.
+            Populated when original source becomes unavailable.
+        last_known_good: Timestamp when location was last verified accessible.
+            None if never validated. Used to calculate location_confidence.
     """
 
     id: str
@@ -59,6 +97,10 @@ class Fragment:
     location: Optional[Any] = None
     deep_link: Optional[str] = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    location_confidence: LocationConfidence = LocationConfidence.HIGH
+    fallback_url: Optional[str] = None
+    archive_url: Optional[str] = None
+    last_known_good: Optional[datetime] = None
 
     def __post_init__(self) -> None:
         """Validate fragment data after initialization."""

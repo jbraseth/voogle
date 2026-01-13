@@ -26,7 +26,7 @@ from qdrant_client import models
 
 from voogle import embedding as emb
 from voogle import vector
-from voogle.core.fragment import ContentType
+from voogle.core.fragment import ContentType, LocationConfidence
 from voogle.embedding.sparse import SparseEncoder, get_sparse_encoder
 from voogle.vector_schema import VectorName
 
@@ -98,6 +98,12 @@ class SearchResult:
         end_time: End time in seconds (for audio/video).
         corpus_id: Corpus this result belongs to.
         metadata: Additional metadata fields.
+        location_confidence: Confidence level for location availability.
+            Clients should use this to gracefully degrade UI when
+            location may be unavailable.
+        fallback_url: Alternative URL if primary location is unavailable.
+        archive_url: Archive.org URL for broken sources.
+        last_known_good: ISO timestamp when location was last verified.
     """
 
     id: str
@@ -109,6 +115,10 @@ class SearchResult:
     end_time: Optional[float] = None
     corpus_id: Optional[str] = None
     metadata: dict = field(default_factory=dict)
+    location_confidence: LocationConfidence = LocationConfidence.HIGH
+    fallback_url: Optional[str] = None
+    archive_url: Optional[str] = None
+    last_known_good: Optional[str] = None
 
 
 @dataclass
@@ -652,6 +662,10 @@ class SearchService:
                     end_time=original.end_time,
                     corpus_id=original.corpus_id,
                     metadata=original.metadata,
+                    location_confidence=original.location_confidence,
+                    fallback_url=original.fallback_url,
+                    archive_url=original.archive_url,
+                    last_known_good=original.last_known_good,
                 )
             )
 
@@ -680,6 +694,13 @@ class SearchService:
             start_time = payload.get("start_time") or payload.get("start_secs")
             end_time = payload.get("end_time") or payload.get("end_secs")
 
+            # Extract graceful degradation fields
+            location_confidence_str = payload.get("location_confidence", "high")
+            try:
+                location_confidence = LocationConfidence(location_confidence_str)
+            except ValueError:
+                location_confidence = LocationConfidence.HIGH
+
             results.append(
                 SearchResult(
                     id=str(point.id),
@@ -704,8 +725,16 @@ class SearchService:
                             "end_secs",
                             "source_type",
                             "corpus_id",
+                            "location_confidence",
+                            "fallback_url",
+                            "archive_url",
+                            "last_known_good",
                         }
                     },
+                    location_confidence=location_confidence,
+                    fallback_url=payload.get("fallback_url"),
+                    archive_url=payload.get("archive_url"),
+                    last_known_good=payload.get("last_known_good"),
                 )
             )
 
