@@ -1,0 +1,10 @@
+0.0|5.5|Welcome to this episode of the technology podcast where we discuss the latest in software development.
+5.5|12.3|Today we're going to explore how artificial intelligence is transforming the way we build applications.
+12.3|18.7|Machine learning models can now understand natural language and generate human-like responses.
+18.7|25.2|This has opened up incredible possibilities for search engines and knowledge retrieval systems.
+25.2|32.0|Vector embeddings allow us to capture the semantic meaning of text in a mathematical form.
+32.0|38.5|By comparing these embeddings, we can find similar content even when the exact words differ.
+38.5|45.0|This is the foundation of semantic search technology that powers modern search applications.
+45.0|52.3|Companies like Google and OpenAI have pioneered these techniques over the past decade.
+52.3|58.8|Now open source models like Sentence Transformers make this accessible to everyone.
+58.8|65.0|In our next segment, we'll dive deeper into how to implement these systems in production.
