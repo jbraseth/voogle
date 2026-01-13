@@ -44,6 +44,9 @@ from voogle.embedding.sentence_transformers import SentenceTransformersProvider
 # LanguageBind multimodal provider implementation
 from voogle.embedding.languagebind import LanguageBindProvider
 
+# AWS Nova Bedrock provider implementation
+from voogle.embedding.aws_nova import AWSNovaProvider, is_aws_nova_enabled
+
 # Sparse encoder for hybrid search
 from voogle.embedding.sparse import (
     BM25Config,
@@ -78,6 +81,8 @@ __all__ = [
     # Provider implementations
     "SentenceTransformersProvider",
     "LanguageBindProvider",
+    "AWSNovaProvider",
+    "is_aws_nova_enabled",
     # Sparse encoder for hybrid search
     "BM25Config",
     "BM25Encoder",
