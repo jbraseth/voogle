@@ -14,8 +14,10 @@ from voogle.adapters.base import (
     RawChunk,
     TextChunk,
 )
+from voogle.adapters.registry import AdapterRegistry
 
 __all__ = [
+    "AdapterRegistry",
     "ChunkConfig",
     "ContentAdapter",
     "ContentSource",
