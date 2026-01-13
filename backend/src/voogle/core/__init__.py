@@ -6,6 +6,7 @@
 This module exports the foundational data structures used throughout the
 application for representing searchable content.
 """
+from voogle.core.corpus import Corpus
 from voogle.core.fragment import ContentType, Fragment
 from voogle.core.location import (
     CodeLocation,
@@ -21,6 +22,7 @@ from voogle.core.location import (
 __all__ = [
     "CodeLocation",
     "ContentType",
+    "Corpus",
     "ElementSelectorLocation",
     "Fragment",
     "ImageRegionLocation",
