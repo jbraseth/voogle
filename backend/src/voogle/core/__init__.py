@@ -7,5 +7,26 @@ This module exports the foundational data structures used throughout the
 application for representing searchable content.
 """
 from voogle.core.fragment import ContentType, Fragment
+from voogle.core.location import (
+    CodeLocation,
+    ElementSelectorLocation,
+    ImageRegionLocation,
+    Location,
+    LocationType,
+    PageBboxLocation,
+    SlideLocation,
+    TimestampLocation,
+)
 
-__all__ = ["ContentType", "Fragment"]
+__all__ = [
+    "CodeLocation",
+    "ContentType",
+    "ElementSelectorLocation",
+    "Fragment",
+    "ImageRegionLocation",
+    "Location",
+    "LocationType",
+    "PageBboxLocation",
+    "SlideLocation",
+    "TimestampLocation",
+]
