@@ -38,6 +38,9 @@ from voogle.embedding.provider import (
     ProviderMetadata,
 )
 
+# SentenceTransformers provider implementation
+from voogle.embedding.sentence_transformers import SentenceTransformersProvider
+
 __all__ = [
     # Legacy exports (backward compatibility)
     "DEFAULT_EMBEDDINGS_MODEL",
@@ -60,4 +63,6 @@ __all__ = [
     "EmbeddingProvider",
     "EmbeddingResult",
     "ProviderMetadata",
+    # Provider implementations
+    "SentenceTransformersProvider",
 ]
