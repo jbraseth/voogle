@@ -41,6 +41,9 @@ from voogle.embedding.provider import (
 # SentenceTransformers provider implementation
 from voogle.embedding.sentence_transformers import SentenceTransformersProvider
 
+# LanguageBind multimodal provider implementation
+from voogle.embedding.languagebind import LanguageBindProvider
+
 __all__ = [
     # Legacy exports (backward compatibility)
     "DEFAULT_EMBEDDINGS_MODEL",
@@ -65,4 +68,5 @@ __all__ = [
     "ProviderMetadata",
     # Provider implementations
     "SentenceTransformersProvider",
+    "LanguageBindProvider",
 ]
