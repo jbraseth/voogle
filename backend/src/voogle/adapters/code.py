@@ -389,6 +389,100 @@ def _get_git_branch(repo_path: Path) -> str | None:
     return None
 
 
+def resolve_git_ref_to_sha(repo_path: Path, ref: str) -> str | None:
+    """Resolve a branch name, tag, or partial SHA to a full commit SHA.
+
+    Args:
+        repo_path: Path to the git repository.
+        ref: Branch name, tag name, or partial commit SHA to resolve.
+
+    Returns:
+        Full commit SHA string (first 12 chars), or None if resolution fails.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", ref],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()[:12]
+    except Exception as e:
+        logger.debug("Failed to resolve git ref '%s': %s", ref, e)
+
+    return None
+
+
+def check_ref_staleness(
+    repo_path: Path,
+    recorded_ref: str,
+    file_path: str | None = None,
+) -> dict[str, Any]:
+    """Check if a recorded git ref is stale compared to current HEAD.
+
+    Args:
+        repo_path: Path to the git repository.
+        recorded_ref: The git ref that was recorded at ingestion time.
+        file_path: Optional file path to check for specific file changes.
+
+    Returns:
+        Dictionary containing staleness information:
+        - is_stale: bool - True if the ref differs from current HEAD
+        - current_ref: str | None - Current HEAD ref
+        - commits_behind: int | None - Number of commits between recorded and current
+        - file_changed: bool | None - If file_path provided, whether the file changed
+    """
+    result: dict[str, Any] = {
+        "is_stale": False,
+        "current_ref": None,
+        "commits_behind": None,
+        "file_changed": None,
+    }
+
+    current_ref = _get_git_ref(repo_path)
+    result["current_ref"] = current_ref
+
+    if current_ref is None:
+        return result
+
+    # Check if refs differ
+    if recorded_ref != current_ref:
+        result["is_stale"] = True
+
+        # Count commits between refs
+        try:
+            count_result = subprocess.run(
+                ["git", "rev-list", "--count", f"{recorded_ref}..HEAD"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if count_result.returncode == 0:
+                result["commits_behind"] = int(count_result.stdout.strip())
+        except Exception as e:
+            logger.debug("Failed to count commits: %s", e)
+
+        # Check if specific file changed
+        if file_path:
+            try:
+                diff_result = subprocess.run(
+                    ["git", "diff", "--name-only", recorded_ref, "HEAD", "--", file_path],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if diff_result.returncode == 0:
+                    result["file_changed"] = bool(diff_result.stdout.strip())
+            except Exception as e:
+                logger.debug("Failed to check file changes: %s", e)
+
+    return result
+
+
 @dataclass(frozen=True)
 class CodeSymbol:
     """Represents a code symbol (function, class, etc.) extracted from AST.
@@ -798,6 +892,7 @@ class CodeAdapter(ContentAdapter):
                         file_path=relative_path,
                         start_line=symbol.start_line,
                         end_line=symbol.end_line,
+                        git_ref=git_ref,
                     )
 
                     metadata = dict(base_metadata)
@@ -823,6 +918,7 @@ class CodeAdapter(ContentAdapter):
                 file_path=relative_path,
                 start_line=start_line,
                 end_line=end_line,
+                git_ref=git_ref,
             )
 
             yield RawChunk(
