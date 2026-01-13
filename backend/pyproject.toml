@@ -121,6 +121,15 @@ ml = [
 pdf = [
     "pymupdf>=1.24.0,<2",
 ]
+# Code repository processing dependencies (Tree-sitter AST parsing)
+code = [
+    "tree-sitter>=0.23.0,<1",
+    "tree-sitter-python>=0.23.0,<1",
+    "tree-sitter-javascript>=0.23.0,<1",
+    "tree-sitter-typescript>=0.23.0,<1",
+    "tree-sitter-go>=0.23.0,<1",
+    "tree-sitter-rust>=0.23.0,<1",
+]
 # Management UI dependencies
 management = [
     "streamlit>=1.41.0,<2",
@@ -170,6 +179,15 @@ ml = [
 # PDF processing dependencies
 pdf = [
     "pymupdf>=1.24.0,<2",
+]
+# Code repository processing dependencies (Tree-sitter AST parsing)
+code = [
+    "tree-sitter>=0.23.0,<1",
+    "tree-sitter-python>=0.23.0,<1",
+    "tree-sitter-javascript>=0.23.0,<1",
+    "tree-sitter-typescript>=0.23.0,<1",
+    "tree-sitter-go>=0.23.0,<1",
+    "tree-sitter-rust>=0.23.0,<1",
 ]
 # Management UI dependencies
 management = [
