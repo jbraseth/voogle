@@ -24,6 +24,7 @@ class LocationType(str, Enum):
     CODE = "code"
     SLIDE = "slide"
     IMAGE_REGION = "image_region"
+    EMAIL_THREAD = "email_thread"
 
 
 class Location(ABC):
@@ -281,3 +282,46 @@ class ImageRegionLocation(Location):
         """
         xywh = f"xywh=percent:{self.x:.1f},{self.y:.1f},{self.width:.1f},{self.height:.1f}"
         return f"{base_url}#{xywh}"
+
+
+@dataclass(frozen=True)
+class EmailThreadLocation(Location):
+    """Location within an email thread.
+
+    Attributes:
+        message_id: The Message-ID header value of the email.
+        thread_id: Optional thread ID derived from References/In-Reply-To.
+        thread_position: Position of this email within the thread (1-indexed).
+        total_in_thread: Total number of emails in the thread, if known.
+    """
+
+    message_id: str
+    thread_id: str | None = None
+    thread_position: int = 1
+    total_in_thread: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.message_id:
+            raise ValueError("message_id must not be empty")
+        if self.thread_position < 1:
+            raise ValueError("thread_position must be >= 1")
+        if self.total_in_thread is not None and self.total_in_thread < 1:
+            raise ValueError("total_in_thread must be >= 1")
+        if self.total_in_thread is not None and self.thread_position > self.total_in_thread:
+            raise ValueError("thread_position cannot exceed total_in_thread")
+
+    @property
+    def location_type(self) -> Literal[LocationType.EMAIL_THREAD]:
+        return LocationType.EMAIL_THREAD
+
+    def to_deep_link(self, base_url: str) -> str:
+        """Generate a deep link with email message fragment.
+
+        Uses message-id= fragment for email identification.
+        """
+        encoded_id = self.message_id.replace("<", "").replace(">", "")
+        separator = "&" if "?" in base_url else "?"
+        url = f"{base_url}{separator}message-id={encoded_id}"
+        if self.thread_id:
+            url += f"&thread={self.thread_id}"
+        return url

@@ -23,6 +23,7 @@ class ContentType(Enum):
     DOCUMENT = "document"
     SLIDE = "slide"
     TEXT = "text"
+    EMAIL = "email"
 
 
 @dataclass(frozen=True)
