@@ -4,6 +4,7 @@
 
 import logging
 import uuid
+from enum import Enum
 from typing import Optional
 
 import fastapi
@@ -15,6 +16,20 @@ from voogle.collection import crawler
 from voogle.models import analytics, media, users
 from voogle.models.media import ChannelKind
 from voogle.schemas import media as media_schemas
+
+
+class SearchModeParam(str, Enum):
+    """Search mode parameter for the query endpoint.
+
+    Controls the retrieval strategy:
+    - dense: Semantic search using dense embeddings only
+    - sparse: Keyword search using sparse BM25/SPLADE vectors only
+    - hybrid: Combines dense and sparse with RRF fusion (recommended)
+    """
+
+    dense = "dense"
+    sparse = "sparse"
+    hybrid = "hybrid"
 
 logger = logging.getLogger(__name__)
 router = fastapi.APIRouter(prefix="/media", tags=["media"])
@@ -160,13 +175,26 @@ async def query(
     background_tasks: fastapi.BackgroundTasks,
     k: int = 6,
     channel_id: Optional[uuid.UUID] = None,
+    mode: SearchModeParam = SearchModeParam.dense,
 ) -> list[media_schemas.QueryResponse]:
+    """Search the database with semantic, keyword, or hybrid search.
+
+    Args:
+        query_text: The search query string.
+        k: Number of results to return (default: 6).
+        channel_id: Optional channel UUID to scope search to.
+        mode: Search mode - 'dense' (semantic), 'sparse' (keyword),
+              or 'hybrid' (combined with RRF fusion).
+
+    Returns:
+        List of query results with episode and channel metadata.
+    """
     background_tasks.add_task(store_user_query, query_text)
     output: list[media_schemas.QueryResponse] = []
     channel_pk = None
     if channel_id:
         channel_pk = (await media.Channel.objects.get(id=channel_id)).pk
-    for r in tasks.search(query_text, k, channel=channel_pk):
+    for r in tasks.search(query_text, k, channel=channel_pk, mode=mode.value):
         episode = await media.Episode.objects.get(pk=r.episode)
         if episode.channel is None:
             logger.warning(f"Episode {episode.pk} has no associated channel, skipping")
