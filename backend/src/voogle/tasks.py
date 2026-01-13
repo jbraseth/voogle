@@ -194,36 +194,76 @@ async def reindex_channel(
 
 
 def search(
-    text: str, num_results: int, channel: Optional[str] = None
+    text: str,
+    num_results: int,
+    channel: Optional[str] = None,
+    mode: str = "dense",
 ) -> list[vector.QueryResponse]:
     """Main query function. Use semantic search to find content
     related to the given text in all the vector database.
 
+    Args:
+        text: The search query text.
+        num_results: Number of results to return.
+        channel: Optional channel filter.
+        mode: Search mode - 'dense' (semantic), 'sparse' (keyword),
+              or 'hybrid' (combined with RRF fusion). Default: 'dense'.
+
+    Returns:
+        List of query responses with episode and channel info.
     """
+    from voogle.services.search import SearchMode, SearchQuery, SearchService
+
     provider = embedding.get_embeddings_provider()
     provider_name = settings.settings.embeddings_provider
     collection_name = vector.get_collection_name(provider_name)
 
-    logger.info(f"searching with provider={provider_name}, collection={collection_name}")
+    logger.info(
+        f"searching with provider={provider_name}, "
+        f"collection={collection_name}, mode={mode}"
+    )
 
-    query_filter = None
+    # Map mode string to SearchMode enum
+    search_mode = SearchMode(mode)
+
+    # Build channel filter if specified
+    corpus_ids = None
     if channel:
-        query_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="channel",
-                    match=MatchValue(value=channel),
-                )
-            ]
+        corpus_ids = [channel]
+
+    # Use SearchService for unified search logic
+    service = SearchService()
+    query = SearchQuery(
+        query_text=text,
+        corpus_ids=corpus_ids,
+        mode=search_mode,
+        limit=num_results,
+        collection_name=collection_name,
+    )
+
+    response = service.search(query)
+
+    # Convert SearchResult to legacy QueryResponse format
+    results = []
+    for r in response.results:
+        # Parse episode from source_id or metadata
+        episode_id = int(r.source_id) if r.source_id.isdigit() else 0
+        channel_id = r.metadata.get("channel", 0)
+        start_secs = int(r.start_time) if r.start_time else 0
+        end_secs = int(r.end_time) if r.end_time else 0
+
+        results.append(
+            vector.QueryResponse(
+                score=r.score,
+                episode=episode_id,
+                channel=channel_id,
+                start_secs=start_secs,
+                end_secs=end_secs,
+                text=r.text,
+            )
         )
 
-    return vector.search(
-        vector.get_configured_client(),
-        embedding.text2embedding(text, provider),
-        collection_name,
-        num_results,
-        query_filter=query_filter,
-    )
+    return results
 
 
 def search_collection(

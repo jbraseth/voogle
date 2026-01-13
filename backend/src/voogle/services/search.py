@@ -27,6 +27,7 @@ from qdrant_client import models
 from voogle import embedding as emb
 from voogle import vector
 from voogle.core.fragment import ContentType
+from voogle.embedding.sparse import SparseEncoder, get_sparse_encoder
 from voogle.vector_schema import VectorName
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,9 @@ class SearchService:
 
     Provides methods for searching the Qdrant vector database with support
     for multiple filtering options and hybrid search with RRF fusion.
+
+    Hybrid search combines dense embeddings (semantic) with sparse embeddings
+    (keyword-based BM25/SPLADE) using Reciprocal Rank Fusion (RRF).
     """
 
     # RRF constant (k parameter) - higher values weight all ranks more equally
@@ -143,6 +147,7 @@ class SearchService:
         self,
         embeddings_provider: Optional[emb.EmbeddingsProvider] = None,
         qdrant_client: Optional[vector.qdrant_client.QdrantClient] = None,
+        sparse_encoder: Optional[SparseEncoder] = None,
     ) -> None:
         """Initialize the search service.
 
@@ -151,9 +156,12 @@ class SearchService:
                 If None, uses the default provider from settings.
             qdrant_client: Qdrant client for vector database operations.
                 If None, uses the configured client from settings.
+            sparse_encoder: Encoder for generating sparse vectors.
+                If None, uses the default BM25 encoder.
         """
         self._embeddings_provider = embeddings_provider
         self._qdrant_client = qdrant_client
+        self._sparse_encoder = sparse_encoder
 
     @property
     def embeddings_provider(self) -> emb.EmbeddingsProvider:
@@ -169,6 +177,13 @@ class SearchService:
             self._qdrant_client = vector.get_configured_client()
         return self._qdrant_client
 
+    @property
+    def sparse_encoder(self) -> SparseEncoder:
+        """Get or lazily initialize the sparse encoder."""
+        if self._sparse_encoder is None:
+            self._sparse_encoder = get_sparse_encoder()
+        return self._sparse_encoder
+
     def __str__(self) -> str:
         """Return string representation of the service."""
         return f"SearchService(provider={type(self._embeddings_provider).__name__})"
@@ -178,7 +193,8 @@ class SearchService:
         return (
             f"SearchService("
             f"embeddings_provider={self._embeddings_provider!r}, "
-            f"qdrant_client={self._qdrant_client!r})"
+            f"qdrant_client={self._qdrant_client!r}, "
+            f"sparse_encoder={self._sparse_encoder!r})"
         )
 
     def search(self, query: SearchQuery) -> SearchResponse:
@@ -394,11 +410,10 @@ class SearchService:
         offset: int,
         query_filter: Optional[models.Filter],
     ) -> list[SearchResult]:
-        """Execute sparse vector search.
+        """Execute sparse vector search using BM25/SPLADE.
 
-        Note: Sparse search requires a sparse vector index to be configured.
-        This is a placeholder that falls back to dense search if sparse
-        vectors are not available.
+        Sparse search provides keyword-based matching that complements
+        dense semantic search.
 
         Args:
             query_text: Query text.
@@ -430,13 +445,29 @@ class SearchService:
                 query_text, collection_name, limit, offset, query_filter
             )
 
-        # For sparse search, we would need to compute sparse embeddings
-        # This requires a sparse encoder (e.g., SPLADE, BM25)
-        # For now, fall back to dense search
-        logger.info("Sparse search not yet implemented, using dense search")
-        return self._search_dense(
-            query_text, collection_name, limit, offset, query_filter
-        )
+        # Generate sparse embedding
+        sparse_vector = self.sparse_encoder.encode(query_text)
+
+        if not sparse_vector.indices:
+            logger.warning("Empty sparse vector, falling back to dense search")
+            return self._search_dense(
+                query_text, collection_name, limit, offset, query_filter
+            )
+
+        # Execute sparse vector search
+        results = self.qdrant_client.query_points(
+            collection_name=collection_name,
+            query=models.SparseVector(
+                indices=sparse_vector.indices,
+                values=sparse_vector.values,
+            ),
+            using=VectorName.TEXT_SPARSE.value,
+            query_filter=query_filter,
+            limit=limit,
+            offset=offset,
+        ).points
+
+        return self._convert_results(results)
 
     def _search_hybrid(
         self,
@@ -446,9 +477,11 @@ class SearchService:
         offset: int,
         query_filter: Optional[models.Filter],
     ) -> list[SearchResult]:
-        """Execute hybrid search with RRF fusion.
+        """Execute hybrid search with RRF fusion using prefetch pattern.
 
         Combines dense and sparse search results using Reciprocal Rank Fusion.
+        Uses Qdrant's prefetch mechanism for efficient hybrid search when
+        sparse vectors are available, otherwise falls back to separate queries.
 
         Args:
             query_text: Query text.
@@ -460,8 +493,27 @@ class SearchService:
         Returns:
             List of SearchResult objects fused with RRF.
         """
-        # Get results from both dense and sparse search
-        # Request more results than needed to improve fusion quality
+        # Check if sparse vectors are available for prefetch optimization
+        try:
+            collection_info = self.qdrant_client.get_collection(collection_name)
+            vectors_config = collection_info.config.params.vectors
+            use_named_vectors = isinstance(vectors_config, dict)
+            has_sparse = (
+                collection_info.config.params.sparse_vectors is not None
+                and VectorName.TEXT_SPARSE.value
+                in collection_info.config.params.sparse_vectors
+            )
+        except Exception:
+            use_named_vectors = False
+            has_sparse = False
+
+        # If we have named vectors and sparse support, use optimized prefetch
+        if use_named_vectors and has_sparse:
+            return self._search_hybrid_prefetch(
+                query_text, collection_name, limit, offset, query_filter
+            )
+
+        # Fallback: separate queries with manual RRF fusion
         fetch_limit = min(limit * 3, 100)
 
         dense_results = self._search_dense(
@@ -479,6 +531,74 @@ class SearchService:
         end_idx = offset + limit
 
         return fused_results[start_idx:end_idx]
+
+    def _search_hybrid_prefetch(
+        self,
+        query_text: str,
+        collection_name: str,
+        limit: int,
+        offset: int,
+        query_filter: Optional[models.Filter],
+    ) -> list[SearchResult]:
+        """Execute hybrid search using Qdrant's prefetch pattern.
+
+        Uses Qdrant's native prefetch mechanism to efficiently combine
+        dense and sparse results with RRF fusion in a single query.
+
+        Args:
+            query_text: Query text.
+            collection_name: Qdrant collection name.
+            limit: Maximum results to return.
+            offset: Offset for pagination.
+            query_filter: Optional Qdrant filter.
+
+        Returns:
+            List of SearchResult objects.
+        """
+        # Generate embeddings
+        query_embedding = emb.text2embedding(query_text, self.embeddings_provider)
+        sparse_vector = self.sparse_encoder.encode(query_text)
+
+        # If sparse vector is empty, fall back to dense-only search
+        if not sparse_vector.indices:
+            logger.warning("Empty sparse vector in hybrid search, using dense only")
+            return self._search_dense(
+                query_text, collection_name, limit, offset, query_filter
+            )
+
+        # Prefetch limit should be higher than final limit for better fusion
+        prefetch_limit = min(limit * 3, 100)
+
+        # Use Qdrant's query with prefetch for optimized hybrid search
+        # The prefetch pattern fetches candidates from multiple vectors
+        # and fuses them using RRF
+        results = self.qdrant_client.query_points(
+            collection_name=collection_name,
+            prefetch=[
+                # Dense vector prefetch
+                models.Prefetch(
+                    query=query_embedding[0].tolist(),
+                    using=VectorName.TEXT_DENSE.value,
+                    limit=prefetch_limit,
+                ),
+                # Sparse vector prefetch
+                models.Prefetch(
+                    query=models.SparseVector(
+                        indices=sparse_vector.indices,
+                        values=sparse_vector.values,
+                    ),
+                    using=VectorName.TEXT_SPARSE.value,
+                    limit=prefetch_limit,
+                ),
+            ],
+            # Final query uses RRF fusion
+            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            query_filter=query_filter,
+            limit=limit,
+            offset=offset,
+        ).points
+
+        return self._convert_results(results)
 
     def _rrf_fusion(
         self,

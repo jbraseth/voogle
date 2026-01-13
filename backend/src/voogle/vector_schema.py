@@ -125,6 +125,8 @@ class CollectionConfig:
 
     Attributes:
         vectors_config: Mapping of vector names to their configurations.
+            This includes both dense vectors (VectorParams) and sparse vectors
+            (SparseVectorParams) in a unified dictionary.
         payload_schema: Schema for payload fields (for validation/indexing).
         quantization_config: Default quantization for all vectors.
         on_disk_payload: Whether to store payloads on disk.
@@ -132,7 +134,7 @@ class CollectionConfig:
         write_consistency_factor: Number of replicas that must acknowledge writes.
     """
 
-    vectors_config: dict[str, models.VectorParams] = field(
+    vectors_config: dict[str, models.VectorParams | models.SparseVectorParams] = field(
         default_factory=dict
     )
     payload_schema: dict[str, models.PayloadSchemaType] = field(default_factory=dict)
@@ -161,11 +163,10 @@ def _create_vectors_config(
     text_dense_dim: int = DEFAULT_TEXT_DENSE_DIM,
     image_dim: int = DEFAULT_IMAGE_DIM,
     multimodal_dim: int = DEFAULT_MULTIMODAL_DIM,
-) -> dict[str, models.VectorParams]:
+) -> dict[str, models.VectorParams | models.SparseVectorParams]:
     """Create named vectors configuration for multimodal support.
 
-    Note: This returns only dense vector configs. Sparse vectors are
-    configured separately via sparse_vectors_config parameter.
+    Includes both dense vectors and sparse vectors for hybrid search.
 
     Args:
         text_dense_dim: Dimension for dense text embeddings.
@@ -179,6 +180,9 @@ def _create_vectors_config(
         VectorName.TEXT_DENSE.value: models.VectorParams(
             size=text_dense_dim,
             distance=models.Distance.COSINE,
+        ),
+        VectorName.TEXT_SPARSE.value: models.SparseVectorParams(
+            modifier=models.Modifier.IDF,
         ),
         VectorName.IMAGE.value: models.VectorParams(
             size=image_dim,
@@ -313,15 +317,21 @@ def create_collection_with_schema(
                 "Set recreate=True to overwrite."
             )
 
+    # Separate dense and sparse vector configs
+    dense_vectors: dict[str, models.VectorParams] = {}
+    sparse_vectors: dict[str, models.SparseVectorParams] = {}
+
+    for name, vec_config in config.vectors_config.items():
+        if isinstance(vec_config, models.SparseVectorParams):
+            sparse_vectors[name] = vec_config
+        else:
+            dense_vectors[name] = vec_config
+
     # Create collection with named vectors
     client.create_collection(
         collection_name=collection_name,
-        vectors_config=config.vectors_config,
-        sparse_vectors_config={
-            VectorName.TEXT_SPARSE.value: models.SparseVectorParams(
-                modifier=models.Modifier.IDF,
-            )
-        },
+        vectors_config=dense_vectors,
+        sparse_vectors_config=sparse_vectors if sparse_vectors else None,
         quantization_config=config.quantization_config,
         on_disk_payload=config.on_disk_payload,
         replication_factor=config.replication_factor,

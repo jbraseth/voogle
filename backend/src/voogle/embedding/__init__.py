@@ -44,6 +44,15 @@ from voogle.embedding.sentence_transformers import SentenceTransformersProvider
 # LanguageBind multimodal provider implementation
 from voogle.embedding.languagebind import LanguageBindProvider
 
+# Sparse encoder for hybrid search
+from voogle.embedding.sparse import (
+    BM25Config,
+    BM25Encoder,
+    SparseEncoder,
+    SparseVector,
+    get_sparse_encoder,
+)
+
 __all__ = [
     # Legacy exports (backward compatibility)
     "DEFAULT_EMBEDDINGS_MODEL",
@@ -69,4 +78,10 @@ __all__ = [
     # Provider implementations
     "SentenceTransformersProvider",
     "LanguageBindProvider",
+    # Sparse encoder for hybrid search
+    "BM25Config",
+    "BM25Encoder",
+    "SparseEncoder",
+    "SparseVector",
+    "get_sparse_encoder",
 ]
