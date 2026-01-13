@@ -1,36 +1,91 @@
 # Copyright (c) 2025-2026 Voogle Contributors
 # All rights reserved.
 
-"""Pipeline stages for media processing.
+"""Modular ingestion pipeline architecture.
 
-This module provides the Stage protocol and concrete implementations
-for processing media through various stages:
-- Fetching: Retrieve content from URLs, files, cloud storage, YouTube, RSS
-- Transcription: Convert audio to text
-- Embedding: Generate vector embeddings
-- Indexing: Store in vector database
+This module provides the core infrastructure for building content processing
+pipelines. Pipelines orchestrate source fetching, content extraction,
+chunking, embedding, and indexing through composable stages.
+
+Exports:
+    Pipeline: Main pipeline orchestrator class.
+    Stage: Abstract base class for pipeline stages.
+    PipelineConfig: Configuration for pipeline execution.
+    RetryConfig: Configuration for retry behavior.
+    RetryStrategy: Enum for retry strategies (none, fixed, exponential).
+    StageStatus: Enum for stage execution status.
+    StageProgress: Progress tracking for individual stages.
+    PipelineProgress: Progress tracking for entire pipeline.
+    StageError: Exception for stage processing failures.
+    PipelineError: Exception for pipeline-level failures.
+
+Fetching Stage Exports:
+    ContentType: Enum for content MIME types.
+    ContentTypeError: Exception for unsupported content types.
+    FetchError: Exception for fetching failures.
+    FetchResult: Dataclass for fetch operation results.
+    StorageError: Exception for storage operation failures.
+
+Example:
+    from voogle.pipeline import Pipeline, Stage, PipelineConfig
+
+    class FetchStage(Stage[str, dict]):
+        @property
+        def name(self) -> str:
+            return "fetch"
+
+        async def process(self, items):
+            async for url in items:
+                yield await fetch_data(url)
+
+    config = PipelineConfig(max_concurrency=4)
+    pipeline = Pipeline([FetchStage()], config)
+
+    async for result in pipeline.execute(urls):
+        print(result)
 """
-
-from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+
+from voogle.pipeline.base import (
+    Pipeline,
+    PipelineConfig,
+    PipelineError,
+    PipelineProgress,
+    RetryConfig,
+    RetryStrategy,
+    Stage,
+    StageError,
+    StageProgress,
+    StageStatus,
+)
+from voogle.pipeline.chunking import (
+    Chunk,
+    ChunkableContent,
+    ChunkConfig,
+    ChunkingStage,
+    ChunkStrategy,
+)
+from voogle.pipeline.indexing import (
+    EmbeddedFragment,
+    IndexingConfig,
+    IndexingResult,
+    IndexingStage,
+    generate_point_id,
+)
 
 
-class StageError(Exception):
-    """Base exception for stage errors."""
-
-
-class FetchError(StageError):
+# Fetching stage exceptions - use simpler signature than base StageError
+class FetchError(Exception):
     """Raised when content fetching fails."""
 
 
-class ContentTypeError(StageError):
+class ContentTypeError(Exception):
     """Raised when content type is unsupported or cannot be detected."""
 
 
-class StorageError(StageError):
+class StorageError(Exception):
     """Raised when storage operations fail."""
 
 
@@ -50,7 +105,7 @@ class ContentType(Enum):
     UNKNOWN = "application/octet-stream"
 
     @classmethod
-    def from_mime(cls, mime_type: str) -> ContentType:
+    def from_mime(cls, mime_type: str) -> "ContentType":
         """Convert MIME type string to ContentType enum."""
         mime_lower = mime_type.lower().split(";")[0].strip()
         for content_type in cls:
@@ -59,7 +114,7 @@ class ContentType(Enum):
         return cls.UNKNOWN
 
     @classmethod
-    def from_extension(cls, extension: str) -> ContentType:
+    def from_extension(cls, extension: str) -> "ContentType":
         """Infer content type from file extension."""
         ext_map = {
             ".mp3": cls.AUDIO_MP3,
@@ -106,40 +161,30 @@ class FetchResult:
     metadata: dict
 
 
-class Stage(Protocol):
-    """Protocol for pipeline stages.
-
-    Stages should:
-    - Validate inputs at boundaries (fail loud)
-    - Handle errors explicitly
-    - Be composable with other stages
-    """
-
-    def process(self, source: str) -> FetchResult:
-        """Process input and return result.
-
-        Args:
-            source: Source URL or path to process
-
-        Returns:
-            FetchResult with local path and metadata
-
-        Raises:
-            StageError: If processing fails
-        """
-        ...
-
-    def __repr__(self) -> str:
-        """Return string representation of stage."""
-        ...
-
-
 __all__ = [
+    "Chunk",
+    "ChunkConfig",
+    "ChunkStrategy",
+    "ChunkableContent",
+    "ChunkingStage",
     "ContentType",
     "ContentTypeError",
+    "EmbeddedFragment",
     "FetchError",
     "FetchResult",
+    "IndexingConfig",
+    "IndexingResult",
+    "IndexingStage",
+    "Pipeline",
+    "PipelineConfig",
+    "PipelineError",
+    "PipelineProgress",
+    "RetryConfig",
+    "RetryStrategy",
     "Stage",
     "StageError",
+    "StageProgress",
+    "StageStatus",
     "StorageError",
+    "generate_point_id",
 ]

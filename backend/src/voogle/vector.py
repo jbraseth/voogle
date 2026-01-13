@@ -22,10 +22,29 @@ from sklearn.decomposition import PCA
 
 from voogle import embedding, settings, storage
 from voogle.models import Episode
+from voogle.vector_schema import (
+    CollectionConfig,
+    VectorName,
+    create_collection_with_schema,
+    get_collection_config,
+)
 
 DEFAULT_COLLECTION: str = "vectordb"
 
 logger = logging.getLogger(__name__)
+
+# Re-export schema types for convenient access
+__all__ = [
+    "CollectionConfig",
+    "VectorName",
+    "create_collection_with_schema",
+    "get_collection_config",
+    "DEFAULT_COLLECTION",
+    "QueryResponse",
+    "SearchResultWithVector",
+    "ProjectedPoint",
+    "ProjectionResult",
+]
 
 
 def generate_point_id(episode_pk: str, fragment_start_idx: int) -> str:
@@ -123,6 +142,9 @@ def create_collection(
     """Create a collection in the vector database with the given name.
 
     If the collection already exists, it is deleted first.
+
+    Note: This creates a legacy single-vector collection. For multimodal
+    support with named vectors, use create_multimodal_collection instead.
     """
     logger.info(f"creating qdrant collection {name} with dimension={vector_dimension}")
     if client.collection_exists(name):
@@ -135,6 +157,35 @@ def create_collection(
             distance=models.Distance.COSINE,
         ),
     )
+
+
+def create_multimodal_collection(
+    client: qdrant_client.QdrantClient,
+    name: str,
+    config: Optional[CollectionConfig] = None,
+    recreate: bool = False,
+) -> None:
+    """Create a collection with multimodal support using named vectors.
+
+    This creates a collection supporting multiple embedding types:
+    - text_dense: Dense text embeddings (e.g., sentence-transformers)
+    - text_sparse: Sparse text embeddings (e.g., SPLADE, BM25)
+    - image: Image embeddings (e.g., CLIP visual encoder)
+    - multimodal: Joint text-image embeddings
+
+    Args:
+        client: Qdrant client instance.
+        name: Collection name.
+        config: Optional collection configuration. If None, uses defaults.
+        recreate: If True, delete existing collection first.
+    """
+    if config is None:
+        config = get_collection_config()
+
+    logger.info(f"creating multimodal qdrant collection {name}")
+    logger.info(f"  vectors: {list(config.vectors_config.keys())}")
+
+    create_collection_with_schema(client, name, config, recreate=recreate)
 
 
 @cache
