@@ -74,6 +74,17 @@ from voogle.pipeline.indexing import (
     IndexingStage,
     generate_point_id,
 )
+from voogle.pipeline.jobs import (
+    Checkpoint,
+    InvalidTransitionError,
+    Job,
+    JobError,
+    JobProgress,
+    JobService,
+    JobStatus,
+    get_job_service,
+    reset_job_service,
+)
 
 
 # Fetching stage exceptions - use simpler signature than base StageError
@@ -162,6 +173,7 @@ class FetchResult:
 
 
 __all__ = [
+    "Checkpoint",
     "Chunk",
     "ChunkConfig",
     "ChunkStrategy",
@@ -175,6 +187,12 @@ __all__ = [
     "IndexingConfig",
     "IndexingResult",
     "IndexingStage",
+    "InvalidTransitionError",
+    "Job",
+    "JobError",
+    "JobProgress",
+    "JobService",
+    "JobStatus",
     "Pipeline",
     "PipelineConfig",
     "PipelineError",
@@ -187,4 +205,6 @@ __all__ = [
     "StageStatus",
     "StorageError",
     "generate_point_id",
+    "get_job_service",
+    "reset_job_service",
 ]
