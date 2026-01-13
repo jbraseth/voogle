@@ -9,19 +9,24 @@ named vectors and payload-based partitioning. The schema supports:
 - Named vectors for different embedding types (text_dense, text_sparse, image, multimodal)
 - Payload schema matching Fragment and Location types
 - Quantization configuration for storage efficiency
+- Payload indexes for optimal filter performance with tenant isolation
 
 Usage:
     from voogle.vector_schema import get_collection_config, create_collection_with_schema
 
     config = get_collection_config()
     create_collection_with_schema(client, "my_collection", config)
+
+    # Get payload index definitions
+    from voogle.vector_schema import get_payload_indexes
+    indexes = get_payload_indexes()
 """
 
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-from qdrant_client import models
+from qdrant_client import QdrantClient, models
 
 
 class VectorName(str, Enum):
@@ -63,6 +68,55 @@ class VectorConfig:
 DEFAULT_TEXT_DENSE_DIM = 384  # sentence-transformers/all-MiniLM-L6-v2
 DEFAULT_IMAGE_DIM = 512  # CLIP ViT-B/32
 DEFAULT_MULTIMODAL_DIM = 512  # CLIP joint embedding space
+
+
+@dataclass(frozen=True)
+class PayloadIndexConfig:
+    """Configuration for a payload field index.
+
+    Payload indexes enable efficient filtering on fields. Tenant fields
+    receive special handling for multi-tenant isolation.
+
+    Attributes:
+        field_name: Name of the payload field to index.
+        field_type: Qdrant payload schema type for this field.
+        is_tenant: If True, this field is used for tenant isolation.
+                   Tenant fields get priority indexing and are always indexed.
+    """
+
+    field_name: str
+    field_type: models.PayloadSchemaType
+    is_tenant: bool = False
+
+
+# Primary payload indexes for optimal filter performance
+# These indexes are critical for query performance and tenant isolation
+PRIMARY_PAYLOAD_INDEXES: tuple[PayloadIndexConfig, ...] = (
+    # Tenant isolation index - always indexed, used for corpus partitioning
+    PayloadIndexConfig(
+        field_name="corpus_id",
+        field_type=models.PayloadSchemaType.KEYWORD,
+        is_tenant=True,
+    ),
+    # Content type for filtering by modality (text, image, audio, video)
+    PayloadIndexConfig(
+        field_name="content_type",
+        field_type=models.PayloadSchemaType.KEYWORD,
+        is_tenant=False,
+    ),
+    # Source identifier for filtering by data source
+    PayloadIndexConfig(
+        field_name="source_id",
+        field_type=models.PayloadSchemaType.UUID,
+        is_tenant=False,
+    ),
+    # Timestamp for time-range filtering
+    PayloadIndexConfig(
+        field_name="created_at",
+        field_type=models.PayloadSchemaType.DATETIME,
+        is_tenant=False,
+    ),
+)
 
 
 @dataclass
@@ -309,3 +363,166 @@ def get_vector_name_for_modality(modality: str) -> VectorName:
         )
 
     return modality_mapping[modality]
+
+
+def get_payload_indexes() -> list[PayloadIndexConfig]:
+    """Get the list of payload index configurations.
+
+    Returns:
+        List of PayloadIndexConfig objects defining the primary indexes
+        for optimal filter performance and tenant isolation.
+
+    Example:
+        >>> indexes = get_payload_indexes()
+        >>> for idx in indexes:
+        ...     print(f"{idx.field_name}: {idx.field_type}, tenant={idx.is_tenant}")
+        corpus_id: PayloadSchemaType.KEYWORD, tenant=True
+        content_type: PayloadSchemaType.KEYWORD, tenant=False
+        source_id: PayloadSchemaType.UUID, tenant=False
+        created_at: PayloadSchemaType.DATETIME, tenant=False
+    """
+    return list(PRIMARY_PAYLOAD_INDEXES)
+
+
+def get_tenant_indexes() -> list[PayloadIndexConfig]:
+    """Get only the tenant isolation indexes.
+
+    Returns:
+        List of PayloadIndexConfig objects marked as tenant fields.
+        These fields are used for multi-tenant data isolation.
+    """
+    return [idx for idx in PRIMARY_PAYLOAD_INDEXES if idx.is_tenant]
+
+
+@dataclass
+class PayloadIndexStatus:
+    """Status of a payload index in a collection.
+
+    Attributes:
+        field_name: Name of the indexed field.
+        indexed: Whether the field has an index.
+        index_type: Type of index if indexed, None otherwise.
+        points_count: Approximate number of indexed values.
+    """
+
+    field_name: str
+    indexed: bool
+    index_type: Optional[str] = None
+    points_count: Optional[int] = None
+
+
+@dataclass
+class CollectionIndexReport:
+    """Report on payload indexes for a collection.
+
+    Attributes:
+        collection_name: Name of the collection.
+        indexes: List of index statuses.
+        missing_primary_indexes: List of primary indexes not found in collection.
+        has_tenant_index: Whether tenant isolation index exists.
+    """
+
+    collection_name: str
+    indexes: list[PayloadIndexStatus]
+    missing_primary_indexes: list[str]
+    has_tenant_index: bool
+
+
+def get_collection_index_status(
+    client: QdrantClient,
+    collection_name: str,
+) -> CollectionIndexReport:
+    """Get the status of payload indexes for a collection.
+
+    Queries the collection to determine which payload fields are indexed
+    and reports on missing primary indexes.
+
+    Args:
+        client: Qdrant client instance.
+        collection_name: Name of the collection to check.
+
+    Returns:
+        CollectionIndexReport with index status and coverage analysis.
+
+    Raises:
+        ValueError: If collection does not exist.
+    """
+    if not client.collection_exists(collection_name):
+        raise ValueError(f"Collection '{collection_name}' does not exist")
+
+    collection_info = client.get_collection(collection_name)
+    payload_schema = collection_info.payload_schema or {}
+
+    # Build index status list from collection schema
+    indexes = []
+    indexed_fields = set()
+
+    for field_name, field_info in payload_schema.items():
+        indexed_fields.add(field_name)
+        indexes.append(
+            PayloadIndexStatus(
+                field_name=field_name,
+                indexed=True,
+                index_type=str(field_info.data_type) if hasattr(field_info, 'data_type') else None,
+                points_count=field_info.points if hasattr(field_info, 'points') else None,
+            )
+        )
+
+    # Check for missing primary indexes
+    primary_fields = {idx.field_name for idx in PRIMARY_PAYLOAD_INDEXES}
+    missing = [f for f in primary_fields if f not in indexed_fields]
+
+    # Check tenant index
+    tenant_fields = {idx.field_name for idx in get_tenant_indexes()}
+    has_tenant = bool(tenant_fields & indexed_fields)
+
+    return CollectionIndexReport(
+        collection_name=collection_name,
+        indexes=indexes,
+        missing_primary_indexes=missing,
+        has_tenant_index=has_tenant,
+    )
+
+
+def ensure_primary_indexes(
+    client: QdrantClient,
+    collection_name: str,
+) -> list[str]:
+    """Ensure all primary payload indexes exist on a collection.
+
+    Creates any missing primary indexes. This is idempotent - existing
+    indexes are not modified.
+
+    Args:
+        client: Qdrant client instance.
+        collection_name: Name of the collection to update.
+
+    Returns:
+        List of field names that were newly indexed.
+
+    Raises:
+        ValueError: If collection does not exist.
+    """
+    if not client.collection_exists(collection_name):
+        raise ValueError(f"Collection '{collection_name}' does not exist")
+
+    report = get_collection_index_status(client, collection_name)
+    created = []
+
+    for field_name in report.missing_primary_indexes:
+        # Find the config for this field
+        config = next(
+            (idx for idx in PRIMARY_PAYLOAD_INDEXES if idx.field_name == field_name),
+            None,
+        )
+        if config is None:
+            continue
+
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name=config.field_name,
+            field_schema=config.field_type,
+        )
+        created.append(field_name)
+
+    return created
